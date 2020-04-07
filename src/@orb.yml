@@ -130,7 +130,8 @@ examples:
               test_results_path: /path/to/test/results
   maven_test:
     description: |
-      If you have a standard maven project, you can use this orb to run through a common maven workflow. Without any additional configuration you can build, test, and automatically have your test results uploaded to CircleCI.
+      If you have a standard maven project, you can use this orb to run through a common maven workflow.
+      Without any additional configuration you can build, test, and automatically have your test results uploaded to CircleCI.
     usage:
       orbs:
         maven: circleci/maven@x.y
@@ -325,4 +326,3 @@ jobs:
     - process_test_results:
         test_results_path: << parameters.test_results_path >>
 version: 2.1
-
