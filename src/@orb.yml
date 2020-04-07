@@ -94,6 +94,18 @@ commands:
             name: Install Dependencies
             working_directory: << parameters.app_src_directory >>
     - steps: << parameters.steps >>
+    - run:
+        name: Optionally clean up cache.
+        command: |
+              # will there be a new cache entry?
+              if cmp -s "/tmp/git_last_previous_hash" "/tmp/git_last_hash" ; then
+                echo "No new cache entry will be created"
+              else
+                echo "A new cache entry will be created, deleting files not accessed during this build.."
+                find ~/.m2/ -type f -not -anewer /tmp/git_last_hash -delete
+                find ~/.m2/ -type d -empty -delete
+                echo "Files deleted"
+              fi
     - save_cache:
         key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}
         paths:
