@@ -43,6 +43,10 @@ commands:
         default: pom.xml
         description: Specify a custom settings file to use (optional)
         type: string
+      cache_key:
+        description: Specify a custom cache key (optional).
+        type: string
+        default: "default"
       steps:
         type: steps
     steps:
@@ -73,7 +77,7 @@ commands:
         working_directory: $CIRCLE_WORKING_DIRECTORY/<< parameters.app_src_directory
           >>
     - restore_cache:
-        key: maven-{{ checksum "/tmp/git_last_previous_hash" }}
+        key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_hash" }}
     - when:
         condition: << parameters.settings_file >>
         steps:
@@ -91,7 +95,7 @@ commands:
             working_directory: << parameters.app_src_directory >>
     - steps: << parameters.steps >>
     - save_cache:
-        key: maven-{{ checksum "/tmp/git_last_hash" }}
+        key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}
         paths:
         - ~/.m2
 description: |
@@ -202,6 +206,10 @@ jobs:
         default: target/surefire-reports
         description: The path to the test results.
         type: string
+      cache_key:
+        description: Specify a custom cache key (optional).
+        type: string
+        default: "default"
     steps:
     - checkout
     - run:
@@ -237,6 +245,7 @@ jobs:
     - with_cache:
         app_src_directory: << parameters.app_src_directory >>
         settings_file: << parameters.settings_file >>
+        cache_key: << parameters.cache_key >>
         steps:
         - when:
             condition: << parameters.settings_file >>
@@ -287,11 +296,16 @@ jobs:
         default: target/surefire-reports
         description: The path to the test results.
         type: string
+      cache_key:
+        description: Specify a custom cache key (optional).
+        type: string
+        default: "default"
     steps:
     - checkout
     - with_cache:
         app_src_directory: << parameters.app_src_directory >>
         settings_file: << parameters.settings_file >>
+        cache_key: << parameters.cache_key >>
         steps:
         - when:
             condition: << parameters.settings_file >>
