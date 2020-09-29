@@ -149,7 +149,7 @@ commands:
                       for e; do endswith "$match" "$e" && return 0; done
                       return 1
                     }
-                    << parameters.maven_command >> dependency:list -Dsort=true -DoutputAbsoluteArtifactFilename=true > /tmp/test/dependencies.txt
+                    << parameters.maven_command >> dependency:list -Dsort=true -DoutputAbsoluteArtifactFilename=true > /tmp/dependencies.txt
                     << parameters.maven_command >> dependency:resolve-plugins -Dsort=true > /tmp/plugins.txt
                     input="/tmp/dependencies.txt"
                     plugins="/tmp/plugins.txt"
@@ -242,10 +242,13 @@ commands:
                 paths:
                 - ~/.m2
 description: |
-  Simplify common tasks for building and testing Java projects using Maven on CircleCI
+    Simplify common tasks for building and testing Java projects using Maven on CircleCI.
+    Based on the official CircleCI Maven orb version 1.0.2 , this orb takes advantange of the git history when
+    restoring caches, improving build time when build files are modified. Skips going offline if <modules>
+    are detected within the root pom.xml
 display:
     home_url: https://maven.apache.org/
-    source_url: https://github.com/CircleCI-Public/maven-orb
+    source_url: https://github.com/entur/maven-orb
 examples:
     custom_command:
         description: |
