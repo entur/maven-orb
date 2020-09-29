@@ -53,31 +53,72 @@ commands:
     - run:
         command: |
               # find build files
-              buildFiles=$(find . -name 'pom.xml' | sed 's/.*/&/' | tr '\n' ' ')
+              buildFiles=$(find . -name '<< parameters.settings_file >>' | sed 's/.*/&/' | tr '\n' ' ')
               # get the latest commit which modified the build files
               lastHash=$(git log -n 1 --pretty=format:%H HEAD -- $buildFiles)
               # do a check that there actually is more than one revision
-              revisions=$(git rev-list --count HEAD)
-              if [ "$revisions" -gt "0" ]; then
+              if ! [ -z "$lastHash" ] && [ $(git rev-list --count HEAD) -gt "1" ]; then
                 # check which previous revision was the last to modify the build files
-                lastPreviousHash=$(git log -n 1 --pretty=format:%H HEAD~1 -- $buildFiles)
-                echo "Last commit to modify build files is hash (excluding last commit) is $lastPreviousHash"
-                if [ "$lastPreviousHash" = "$lastHash" ]; then
+                lastPreviousFirstHash=$(git log -n 1 --pretty=format:%H HEAD~1 -- $buildFiles)
+                if [ "$lastPreviousFirstHash" = "$lastHash" ]; then
                   echo "Build files did not update last commit"
                 else
                   echo "Build files did update last commit"
                 fi
+                if ! [ -z "$lastPreviousFirstHash" ] && [ $(git rev-list --count $lastPreviousFirstHash) -gt "1" ]; then
+                  lastPreviousSecondHash=$(git log -n 1 --pretty=format:%H $lastPreviousFirstHash~1 -- $buildFiles)
+                  echo "Second last time build files updated at $lastPreviousSecondHash"
+                  if ! [ -z "$lastPreviousSecondHash" ] && [ $(git rev-list --count $lastPreviousSecondHash) -gt "1" ]; then
+                    lastPreviousThirdHash=$(git log -n 1 --pretty=format:%H $lastPreviousSecondHash~1 -- $buildFiles)
+                    if ! [ -z "$lastPreviousThirdHash" ]; then
+                      echo "Third last time build files updated at $lastPreviousThirdHash"
+                    fi
+                  fi
+                fi
               else
-                lastPreviousHash=$lastHash
-                echo "Build files did update last commit"
+                echo "Build files did update last commit 2"
               fi
-              echo "$lastPreviousHash" > /tmp/git_last_previous_hash
+              if [ -z "$lastPreviousFirstHash" ]; then
+                lastPreviousFirstHash=$lastHash
+              fi
+              if [ -z "$lastPreviousSecondHash" ]; then
+                lastPreviousSecondHash=$lastHash
+              fi
+              if [ -z "$lastPreviousThirdHash" ]; then
+                lastPreviousThirdHash=$lastHash
+              fi
+              echo "$lastPreviousFirstHash" > /tmp/git_last_previous_first_hash
+              echo "$lastPreviousSecondHash" > /tmp/git_last_previous_second_hash
+              echo "$lastPreviousThirdHash" > /tmp/git_last_previous_third_hash
               echo "$lastHash" > /tmp/git_last_hash
+              echo "success" > /tmp/build_status_success
+              echo "failure" > /tmp/build_status_failure              
         name: Generate Cache Checksum
-        working_directory: $CIRCLE_WORKING_DIRECTORY/<< parameters.app_src_directory
-          >>
+        working_directory: $CIRCLE_WORKING_DIRECTORY/<< parameters.app_src_directory >>
     - restore_cache:
         key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_hash" }}
+        keys:
+          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
+          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_first_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
+          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_first_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_second_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
+          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_second_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
+          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+    - run:
+        name: Prepare cache cleanup.
+        command: |
+            touch /tmp/git_last_hash
+            MAVEN_DIRECTORY="$HOME/.m2"
+            if [[ ! -e $MAVEN_DIRECTORY ]]; then
+              mkdir -p $MAVEN_DIRECTORY
+            fi
+            echo "Folder sizes:"
+            du -h --max-depth=1 ~/.m2
+            if cmp -s "/tmp/git_last_previous_first_hash" "/tmp/git_last_hash" ; then
+              echo "No new cache entry will be created"
+            fi          
     - when:
         condition: << parameters.settings_file >>
         steps:
@@ -95,19 +136,114 @@ commands:
             working_directory: << parameters.app_src_directory >>
     - steps: << parameters.steps >>
     - run:
-        name: Optionally clean up cache.
+        name: Perform cache cleanup.
+        when: on_success
         command: |
-              # will there be a new cache entry?
-              if cmp -s "/tmp/git_last_previous_hash" "/tmp/git_last_hash" ; then
-                echo "No new cache entry will be created"
-              else
-                echo "A new cache entry will be created, deleting files not accessed during this build.."
-                find ~/.m2/ -type f -not -anewer /tmp/git_last_hash -delete
-                find ~/.m2/ -type d -empty -delete
-                echo "Files deleted"
+            echo "success" > /tmp/build_status
+            # should the cache be cleaned?
+            beginswith() { case $2 in "$1"*) true;; *) false;; esac; }
+            endswith() { case $2 in *"$1") true;; *) false;; esac; }
+            containsElement2 () {
+              local e match="$1"
+              shift
+              for e; do [[ "$match" == "$e" ]] && return 0; done
+              return 1
+            }
+            containsElement () {
+              local e match="$1"
+              shift
+              for e; do endswith "$match" "$e" && return 0; done
+              return 1
+            }
+            mvn dependency:list -Dsort=true -DoutputAbsoluteArtifactFilename=true > /tmp/test/dependencies.txt
+            mvn dependency:resolve-plugins -Dsort=true > /tmp/plugins.txt
+            input="/tmp/dependencies.txt"
+            plugins="/tmp/plugins.txt"
+            # read all dependencies
+            capture=false
+            artifacts=()
+            while IFS= read -r line
+            do
+              if beginswith "[INFO] The following files have been resolved:" "$line"; then
+                capture=true
+              elif $capture && beginswith "[INFO]    " "$line"; then
+                #SUBSTRING=$(echo $line | rev | cut -d'/' -f 1 | rev)
+                SUBSTRING=${line##*/}
+                artifacts+=( $SUBSTRING )
+              elif beginswith "[INFO]"; then
+                capture=false
               fi
+            done < "$input"
+            # read all plugins
+            while IFS= read -r line
+            do
+              if beginswith "[INFO]     Plugin Dependency Resolved: " "$line"; then
+                SUBSTRING=${line##*: }
+                artifacts+=( $SUBSTRING )
+              elif beginswith "[INFO] Plugin Resolved: " "$line"; then
+                SUBSTRING=${line##*: }
+                artifacts+=( $SUBSTRING )
+              fi
+            done < "$plugins"
+            # convert to unique list
+            declare -A uniqueArtifacts
+            for i in "${artifacts[@]}"; do uniqueArtifacts["$i"]=1; done
+            # Read all the files in the .m2 directory
+            jarFiles=()
+            while IFS=  read -r -d $'\0'; do
+                jarFiles+=("$REPLY")
+            done < <(find ~/.m2 -type f ! -name "*-sources.jar" -name "*.jar" -print0)
+            # filter directories
+            artifactsToBeDeleted=()
+            for jarFile in "${jarFiles[@]}"
+            do
+              fileName=$(echo $jarFile | rev | cut -d'/' -f 1 | rev)
+              if ! containsElement "$fileName" "${!uniqueArtifacts[@]}"; then
+                artifactsToBeDeleted+=( $jarFile )
+              else
+                echo "Keep $fileName"
+              fi
+            done
+            #printf '%s\n' "${artifactsToBeDeleted[@]}"
+            directoriesToBeDeleted=()
+            for artifactToBeDeleted in "${artifactsToBeDeleted[@]}"
+            do
+              directory=${artifactToBeDeleted%/*} 
+              directoriesToBeDeleted+=( $directory )
+            done
+            # remove duplicates
+            declare -A uniqueDirectoriesToBeDeleted
+            for i in "${directoriesToBeDeleted[@]}"; do uniqueDirectoriesToBeDeleted["$i"]=1; done
+            # delete targets
+            for directory in "${!uniqueDirectoriesToBeDeleted[@]}"
+            do
+              echo "MOHAHAH $directory"
+            done
+    - run:
+        name: Set cache flags for a successful build.
+        when: on_success
+        command: |
+            echo "success" > /tmp/build_status
+            cp /tmp/git_last_hash ~/.m2/last_success_hash
+    - run:
+        name: Set cache flags for a failed build.
+        when: on_fail
+        command: |
+            # if the build has previously run successfully for this hash, we don't want to save another cache (which then would never be used, and would consume time and storage space)
+            if [ -f ~/.m2/last_success_hash ]; then
+              if cmp -s ~/.m2/last_success_hash /tmp/git_last_hash ; then
+                echo "Cache was saved after a previously successful build for the latest build file changes, creating another cache entry for the failed state is unnecessary."
+                # emulate successful build
+                echo "success" > /tmp/build_status
+              else
+                echo "failure" > /tmp/build_status
+              fi
+            else
+              echo "failure" > /tmp/build_status
+            fi
     - save_cache:
-        key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}
+        key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status" }}
+        when: always
         paths:
         - ~/.m2
 description: |
