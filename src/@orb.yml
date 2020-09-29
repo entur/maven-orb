@@ -118,12 +118,13 @@ commands:
                     fi
             - run:
                 command: |
-                    modules=$(xmllint --xpath "count(//*[local-name()='modules']/*[local-name()='module'])" pom.xml )
-                    if [ "$modules" -eq "0" ]; then
+                    if grep -q "<modules>" pom.xml; then
                       if [ -n "<< parameters.settings_file >>" ]; then
                         set -- "$@" --settings "<< parameters.settings_file >>"
                       fi
                       << parameters.maven_command >> dependency:go-offline "$@"
+                    else
+                      echo "Do not run offline command, assuming project with modules"
                     fi
                 name: Install Dependencies (if not multi-module project)
                 working_directory: << parameters.app_src_directory >>
