@@ -1,475 +1,449 @@
 # This code is licensed from CircleCI to the user under the MIT license. See
 # https://circleci.com/orbs/registry/licensing for details.
 commands:
-  process_test_results:
-    description: |
-      Upload test results.
-      This will populate the Test Summary tab in the CircleCI UI. By default it will
-      look in `target/surefire-reports` (the default location for maven test results).
-      You can override where to find the test results with the path parameter.
+    process_test_results:
+        description: |
+            Upload test results.
+            This will populate the Test Summary tab in the CircleCI UI. By default it will
+            look in `target/surefire-reports` (the default location for maven test results).
+            You can override where to find the test results with the path parameter.
     parameters:
-      test_results_path:
-        default: target/surefire-reports
-        description: Specify a custom path for maven test results
-        type: string
+        test_results_path:
+            default: target/surefire-reports
+            description: Specify a custom path for maven test results
+            type: string
     steps:
-    - store_test_results:
-        path: << parameters.test_results_path >>
-  with_cache:
-    description: |
-      Run a set of steps with Maven dependencies cached.
+        - store_test_results:
+              path: << parameters.test_results_path >>
+    with_cache:
+        description: |
+            Run a set of steps with Maven dependencies cached.
 
-      This command will first restore a cache of maven dependencies, if one was
-      saved by a previous build. The provided `steps` parameter will then be executed, and
-      if successful, then a fresh cache will be saved, if required.
+            This command will first restore a cache of maven dependencies, if one was
+            saved by a previous build. The provided `steps` parameter will then be executed, and
+            if successful, then a fresh cache will be saved, if required.
 
-      The contents of the `~/.m2` directory is cached, which will substantially
-      improve build times for projects with many dependencies.
+            The contents of the `~/.m2` directory is cached, which will substantially
+            improve build times for projects with many dependencies.
 
-      The cache-key is generated using the commit hash from from any files named
-      `pom.xml` that are present in the `working_directory`.
-    parameters:
-      app_src_directory:
-        default: ""
-        description: Useful when the source of your maven project is nott in the root
-          directory of your git repo. Supply the name of the directory or relative
-          path of the directory containing your source code.
-        type: string
-      maven_command:
-        default: mvn
-        description: Specify a custom path for invoking maven
-        type: string
-      settings_file:
-        default: pom.xml
-        description: Specify a custom settings file to use (optional)
-        type: string
-      cache_key:
-        description: Specify a custom cache key (optional).
-        type: string
-        default: "default"
-      steps:
-        type: steps
-    steps:
-    - run:
-        command: |
-            # find build files
-            buildFiles=$(find . -name '<< parameters.settings_file >>' | sed 's/.*/&/' | tr '\n' ' ')
-            # get the latest commit which modified the build files
-            lastHash=$(git log -n 1 --pretty=format:%H HEAD -- $buildFiles)
-            # do a check that there actually is more than one revision
-            if ! [ -z "$lastHash" ] && [ $(git rev-list --count HEAD) -gt "1" ]; then
-              # check which previous revision was the last to modify the build files
-              lastPreviousFirstHash=$(git log -n 1 --pretty=format:%H HEAD~1 -- $buildFiles)
-              if [ "$lastPreviousFirstHash" = "$lastHash" ]; then
-                echo "Build files did not update last commit"
-              else
-                echo "Build files did update last commit"
-              fi
-              if ! [ -z "$lastPreviousFirstHash" ] && [ $(git rev-list --count $lastPreviousFirstHash) -gt "1" ]; then
-                lastPreviousSecondHash=$(git log -n 1 --pretty=format:%H $lastPreviousFirstHash~1 -- $buildFiles)
-                echo "Second last time build files updated at $lastPreviousSecondHash"
-                if ! [ -z "$lastPreviousSecondHash" ] && [ $(git rev-list --count $lastPreviousSecondHash) -gt "1" ]; then
-                  lastPreviousThirdHash=$(git log -n 1 --pretty=format:%H $lastPreviousSecondHash~1 -- $buildFiles)
-                  if ! [ -z "$lastPreviousThirdHash" ]; then
-                    echo "Third last time build files updated at $lastPreviousThirdHash"
-                  fi
-                fi
-              fi
-            else
-              echo "Build files did update last commit 2"
-            fi
-            if [ -z "$lastPreviousFirstHash" ]; then
-              lastPreviousFirstHash=$lastHash
-            fi
-            if [ -z "$lastPreviousSecondHash" ]; then
-              lastPreviousSecondHash=$lastHash
-            fi
-            if [ -z "$lastPreviousThirdHash" ]; then
-              lastPreviousThirdHash=$lastHash
-            fi
-            echo "$lastPreviousFirstHash" > /tmp/git_last_previous_first_hash
-            echo "$lastPreviousSecondHash" > /tmp/git_last_previous_second_hash
-            echo "$lastPreviousThirdHash" > /tmp/git_last_previous_third_hash
-            echo "$lastHash" > /tmp/git_last_hash
-            echo "success" > /tmp/build_status_success
-            echo "failure" > /tmp/build_status_failure
-        name: Generate Cache Checksum
-        working_directory: $CIRCLE_WORKING_DIRECTORY/<< parameters.app_src_directory >>
-    - restore_cache:
-        keys:
-          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
-          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
-          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_first_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
-          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_first_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
-          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_second_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
-          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_second_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
-          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
-          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
-    - run:
-        name: Prepare cache cleanup.
-        command: |
-            touch /tmp/git_last_hash
-            MAVEN_DIRECTORY="$HOME/.m2"
-            if [[ ! -e $MAVEN_DIRECTORY ]]; then
-              mkdir -p $MAVEN_DIRECTORY
-            fi
-            echo "Folder sizes:"
-            du -h --max-depth=1 ~/.m2
-            if cmp -s "/tmp/git_last_previous_first_hash" "/tmp/git_last_hash" ; then
-              echo "No new cache entry will be created"
-            fi
-    - when:
-        condition: << parameters.settings_file >>
+            The cache-key is generated using the commit hash from from any files named
+            `pom.xml` that are present in the `working_directory`.
+        parameters:
+            app_src_directory:
+                default: ""
+                description: Useful when the source of your maven project is nott in the root directory of your git repo. Supply the name of the directory or relative path of the directory containing your source code.
+                type: string
+            maven_command:
+                default: mvn
+                description: Specify a custom path for invoking maven
+                type: string
+            settings_file:
+                default: ""
+                description: Specify a custom settings file to use (optional)
+                type: string
+            cache_key:
+                description: Specify a custom cache key (optional).
+                type: string
+                default: "default"
+            steps:
+                type: steps
         steps:
-        - run:
-            command: << parameters.maven_command >> dependency:go-offline --settings
-              '<< parameters.settings_file >>'
-            name: Install Dependencies
-            working_directory: << parameters.app_src_directory >>
-    - unless:
-        condition: << parameters.settings_file >>
-        steps:
-        - run:
-            command: << parameters.maven_command >> dependency:go-offline
-            name: Install Dependencies
-            working_directory: << parameters.app_src_directory >>
-    - steps: << parameters.steps >>
-    - run:
-        name: Perform cache cleanup.
-        when: on_success
-        command: |
-            echo "success" > /tmp/build_status
-            # should the cache be cleaned?
-            beginswith() { case $2 in "$1"*) true;; *) false;; esac; }
-            endswith() { case $2 in *"$1") true;; *) false;; esac; }
-            containsElement2 () {
-              local e match="$1"
-              shift
-              for e; do [[ "$match" == "$e" ]] && return 0; done
-              return 1
-            }
-            containsElement () {
-              local e match="$1"
-              shift
-              for e; do endswith "$match" "$e" && return 0; done
-              return 1
-            }
-            mvn dependency:list -Dsort=true -DoutputAbsoluteArtifactFilename=true > /tmp/test/dependencies.txt
-            mvn dependency:resolve-plugins -Dsort=true > /tmp/plugins.txt
-            input="/tmp/dependencies.txt"
-            plugins="/tmp/plugins.txt"
-            # read all dependencies
-            capture=false
-            artifacts=()
-            while IFS= read -r line
-            do
-              if beginswith "[INFO] The following files have been resolved:" "$line"; then
-                capture=true
-              elif $capture && beginswith "[INFO]    " "$line"; then
-                #SUBSTRING=$(echo $line | rev | cut -d'/' -f 1 | rev)
-                SUBSTRING=${line##*/}
-                artifacts+=( $SUBSTRING )
-              elif beginswith "[INFO]"; then
-                capture=false
-              fi
-            done < "$input"
-            # read all plugins
-            while IFS= read -r line
-            do
-              if beginswith "[INFO]     Plugin Dependency Resolved: " "$line"; then
-                SUBSTRING=${line##*: }
-                artifacts+=( $SUBSTRING )
-              elif beginswith "[INFO] Plugin Resolved: " "$line"; then
-                SUBSTRING=${line##*: }
-                artifacts+=( $SUBSTRING )
-              fi
-            done < "$plugins"
-            # convert to unique list
-            declare -A uniqueArtifacts
-            for i in "${artifacts[@]}"; do uniqueArtifacts["$i"]=1; done
-            # Read all the files in the .m2 directory
-            jarFiles=()
-            while IFS=  read -r -d $'\0'; do
-                jarFiles+=("$REPLY")
-            done < <(find ~/.m2 -type f ! -name "*-sources.jar" -name "*.jar" -print0)
-            # filter directories
-            artifactsToBeDeleted=()
-            for jarFile in "${jarFiles[@]}"
-            do
-              fileName=$(echo $jarFile | rev | cut -d'/' -f 1 | rev)
-              if ! containsElement "$fileName" "${!uniqueArtifacts[@]}"; then
-                artifactsToBeDeleted+=( $jarFile )
-              else
-                echo "Keep $fileName"
-              fi
-            done
-            #printf '%s\n' "${artifactsToBeDeleted[@]}"
-            directoriesToBeDeleted=()
-            for artifactToBeDeleted in "${artifactsToBeDeleted[@]}"
-            do
-              directory=${artifactToBeDeleted%/*}
-              directoriesToBeDeleted+=( $directory )
-            done
-            # remove duplicates
-            declare -A uniqueDirectoriesToBeDeleted
-            for i in "${directoriesToBeDeleted[@]}"; do uniqueDirectoriesToBeDeleted["$i"]=1; done
-            # delete targets
-            for directory in "${!uniqueDirectoriesToBeDeleted[@]}"
-            do
-              rm -rf $directory
-            done
-    - run:
-        name: Set cache flags for a successful build.
-        when: on_success
-        command: |
-            echo "success" > /tmp/build_status
-            cp /tmp/git_last_hash ~/.m2/last_success_hash
-    - run:
-        name: Set cache flags for a failed build.
-        when: on_fail
-        command: |
-            # if the build has previously run successfully for this hash, we don't want to save another cache (which then would never be used, and would consume time and storage space)
-            if [ -f ~/.m2/last_success_hash ]; then
-              if cmp -s ~/.m2/last_success_hash /tmp/git_last_hash ; then
-                echo "Cache was saved after a previously successful build for the latest build file changes, creating another cache entry for the failed state is unnecessary."
-                # emulate successful build
-                echo "success" > /tmp/build_status
-              else
-                echo "failure" > /tmp/build_status
-              fi
-            else
-              echo "failure" > /tmp/build_status
-            fi
-    - save_cache:
-        key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status" }}
-        when: always
-        paths:
-        - ~/.m2
+            - run:
+                command: |
+                    # find build files
+                    buildFiles=$(find . -name '<< parameters.settings_file >>' | sed 's/.*/&/' | tr '\n' ' ')
+                    # get the latest commit which modified the build files
+                    lastHash=$(git log -n 1 --pretty=format:%H HEAD -- $buildFiles)
+                    # do a check that there actually is more than one revision
+                    if ! [ -z "$lastHash" ] && [ $(git rev-list --count HEAD) -gt "1" ]; then
+                      # check which previous revision was the last to modify the build files
+                      lastPreviousFirstHash=$(git log -n 1 --pretty=format:%H HEAD~1 -- $buildFiles)
+                      if [ "$lastPreviousFirstHash" = "$lastHash" ]; then
+                        echo "Build files did not update last commit"
+                      else
+                        echo "Build files did update last commit"
+                      fi
+                      if ! [ -z "$lastPreviousFirstHash" ] && [ $(git rev-list --count $lastPreviousFirstHash) -gt "1" ]; then
+                        lastPreviousSecondHash=$(git log -n 1 --pretty=format:%H $lastPreviousFirstHash~1 -- $buildFiles)
+                        echo "Second last time build files updated at $lastPreviousSecondHash"
+                        if ! [ -z "$lastPreviousSecondHash" ] && [ $(git rev-list --count $lastPreviousSecondHash) -gt "1" ]; then
+                          lastPreviousThirdHash=$(git log -n 1 --pretty=format:%H $lastPreviousSecondHash~1 -- $buildFiles)
+                          if ! [ -z "$lastPreviousThirdHash" ]; then
+                            echo "Third last time build files updated at $lastPreviousThirdHash"
+                          fi
+                        fi
+                      fi
+                    else
+                      echo "Build files did update last commit 2"
+                    fi
+                    if [ -z "$lastPreviousFirstHash" ]; then
+                      lastPreviousFirstHash=$lastHash
+                    fi
+                    if [ -z "$lastPreviousSecondHash" ]; then
+                      lastPreviousSecondHash=$lastHash
+                    fi
+                    if [ -z "$lastPreviousThirdHash" ]; then
+                      lastPreviousThirdHash=$lastHash
+                    fi
+                    echo "$lastPreviousFirstHash" > /tmp/git_last_previous_first_hash
+                    echo "$lastPreviousSecondHash" > /tmp/git_last_previous_second_hash
+                    echo "$lastPreviousThirdHash" > /tmp/git_last_previous_third_hash
+                    echo "$lastHash" > /tmp/git_last_hash
+                    echo "success" > /tmp/build_status_success
+                    echo "failure" > /tmp/build_status_failure
+                name: Generate Cache Checksum
+                working_directory: $CIRCLE_WORKING_DIRECTORY/<< parameters.app_src_directory >>
+            - restore_cache:
+                keys:
+                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
+                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_first_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
+                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_first_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_second_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
+                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_second_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
+                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+            - run:
+                name: Prepare cache cleanup.
+                command: |
+                    touch /tmp/git_last_hash
+                    MAVEN_DIRECTORY="$HOME/.m2"
+                    if [[ ! -e $MAVEN_DIRECTORY ]]; then
+                      mkdir -p $MAVEN_DIRECTORY
+                    fi
+                    echo "Folder sizes:"
+                    du -h --max-depth=1 ~/.m2
+                    if cmp -s "/tmp/git_last_previous_first_hash" "/tmp/git_last_hash" ; then
+                      echo "No new cache entry will be created"
+                    fi
+            - run:
+                command: |
+                    if [ -n "<< parameters.settings_file >>" ]; then
+                      set -- "$@" --settings "<< parameters.settings_file >>"
+                    fi
+                    << parameters.maven_command >> dependency:go-offline "$@"
+                name: Install Dependencies
+                working_directory: << parameters.app_src_directory >>
+            - steps: << parameters.steps >>
+            - run:
+                name: Perform cache cleanup.
+                when: on_success
+                command: |
+                    echo "success" > /tmp/build_status
+                    # should the cache be cleaned?
+                    beginswith() { case $2 in "$1"*) true;; *) false;; esac; }
+                    endswith() { case $2 in *"$1") true;; *) false;; esac; }
+                    containsElement2 () {
+                      local e match="$1"
+                      shift
+                      for e; do [[ "$match" == "$e" ]] && return 0; done
+                      return 1
+                    }
+                    containsElement () {
+                      local e match="$1"
+                      shift
+                      for e; do endswith "$match" "$e" && return 0; done
+                      return 1
+                    }
+                    mvn dependency:list -Dsort=true -DoutputAbsoluteArtifactFilename=true > /tmp/test/dependencies.txt
+                    mvn dependency:resolve-plugins -Dsort=true > /tmp/plugins.txt
+                    input="/tmp/dependencies.txt"
+                    plugins="/tmp/plugins.txt"
+                    # read all dependencies
+                    capture=false
+                    artifacts=()
+                    while IFS= read -r line
+                    do
+                      if beginswith "[INFO] The following files have been resolved:" "$line"; then
+                        capture=true
+                      elif $capture && beginswith "[INFO]    " "$line"; then
+                        #SUBSTRING=$(echo $line | rev | cut -d'/' -f 1 | rev)
+                        SUBSTRING=${line##*/}
+                        artifacts+=( $SUBSTRING )
+                      elif beginswith "[INFO]"; then
+                        capture=false
+                      fi
+                    done < "$input"
+                    # read all plugins
+                    while IFS= read -r line
+                    do
+                      if beginswith "[INFO]     Plugin Dependency Resolved: " "$line"; then
+                        SUBSTRING=${line##*: }
+                        artifacts+=( $SUBSTRING )
+                      elif beginswith "[INFO] Plugin Resolved: " "$line"; then
+                        SUBSTRING=${line##*: }
+                        artifacts+=( $SUBSTRING )
+                      fi
+                    done < "$plugins"
+                    # convert to unique list
+                    declare -A uniqueArtifacts
+                    for i in "${artifacts[@]}"; do uniqueArtifacts["$i"]=1; done
+                    # Read all the files in the .m2 directory
+                    jarFiles=()
+                    while IFS=  read -r -d $'\0'; do
+                        jarFiles+=("$REPLY")
+                    done < <(find ~/.m2 -type f ! -name "*-sources.jar" -name "*.jar" -print0)
+                    # filter directories
+                    artifactsToBeDeleted=()
+                    for jarFile in "${jarFiles[@]}"
+                    do
+                      fileName=$(echo $jarFile | rev | cut -d'/' -f 1 | rev)
+                      if ! containsElement "$fileName" "${!uniqueArtifacts[@]}"; then
+                        artifactsToBeDeleted+=( $jarFile )
+                      else
+                        echo "Keep $fileName"
+                      fi
+                    done
+                    #printf '%s\n' "${artifactsToBeDeleted[@]}"
+                    directoriesToBeDeleted=()
+                    for artifactToBeDeleted in "${artifactsToBeDeleted[@]}"
+                    do
+                      directory=${artifactToBeDeleted%/*}
+                      directoriesToBeDeleted+=( $directory )
+                    done
+                    # remove duplicates
+                    declare -A uniqueDirectoriesToBeDeleted
+                    for i in "${directoriesToBeDeleted[@]}"; do uniqueDirectoriesToBeDeleted["$i"]=1; done
+                    # delete targets
+                    for directory in "${!uniqueDirectoriesToBeDeleted[@]}"
+                    do
+                      rm -rf $directory
+                    done
+            - run:
+                name: Set cache flags for a successful build.
+                when: on_success
+                command: |
+                    echo "success" > /tmp/build_status
+                    cp /tmp/git_last_hash ~/.m2/last_success_hash
+            - run:
+                name: Set cache flags for a failed build.
+                when: on_fail
+                command: |
+                    # if the build has previously run successfully for this hash, we don't want to save another cache (which then would never be used, and would consume time and storage space)
+                    if [ -f ~/.m2/last_success_hash ]; then
+                      if cmp -s ~/.m2/last_success_hash /tmp/git_last_hash ; then
+                        echo "Cache was saved after a previously successful build for the latest build file changes, creating another cache entry for the failed state is unnecessary."
+                        # emulate successful build
+                        echo "success" > /tmp/build_status
+                      else
+                        echo "failure" > /tmp/build_status
+                      fi
+                    else
+                      echo "failure" > /tmp/build_status
+                    fi
+            - save_cache:
+                key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status" }}
+                when: always
+                paths:
+                - ~/.m2
 description: |
   Simplify common tasks for building and testing Java projects using Maven on CircleCI
 display:
-  home_url: https://maven.apache.org/
-  source_url: https://github.com/CircleCI-Public/maven-orb
+    home_url: https://maven.apache.org/
+    source_url: https://github.com/CircleCI-Public/maven-orb
 examples:
-  custom_command:
-    description: |
-      Use parameters to run custom Maven commands. In the example below we are running maven verify with debug mode enabled.
-    usage:
-      orbs:
-        maven: circleci/maven@x.y
-      version: 2.1
-      workflows:
-        maven_test:
-          jobs:
-          - maven/test:
-              command: -X verify
-  custom_test_results_path:
-    description: |
-      If your tests results are not in the default (target/surefire-reports) directory then you could add a custom directory.
-    usage:
-      orbs:
-        maven: circleci/maven@x.y
-      version: 2.1
-      workflows:
-        maven_test:
-          jobs:
-          - maven/test:
-              test_results_path: /path/to/test/results
-  maven_test:
-    description: |
-      If you have a standard maven project, you can use this orb to run through a common maven workflow.
-      Without any additional configuration you can build, test, and automatically have your test results uploaded to CircleCI.
-    usage:
-      orbs:
-        maven: circleci/maven@x.y
-      version: 2.1
-      workflows:
-        maven_test:
-          jobs:
-          - maven/test
+    custom_command:
+        description: |
+            Use parameters to run custom Maven commands. In the example below we are running maven verify with debug mode enabled.
+        usage:
+            orbs:
+                maven: circleci/maven@x.y
+            version: 2.1
+            workflows:
+                maven_test:
+                    jobs:
+                    - maven/test:
+                        command: -X verify
+    custom_test_results_path:
+        description: |
+            If your tests results are not in the default (target/surefire-reports) directory then you could add a custom directory.
+        usage:
+            orbs:
+                maven: circleci/maven@x.y
+            version: 2.1
+            workflows:
+                maven_test:
+                    jobs:
+                    - maven/test:
+                        test_results_path: /path/to/test/results
+    maven_test:
+        description: |
+            If you have a standard maven project, you can use this orb to run through a common maven workflow.
+            Without any additional configuration you can build, test, and automatically have your test results uploaded to CircleCI.
+        usage:
+            orbs:
+                maven: circleci/maven@x.y
+            version: 2.1
+            workflows:
+                maven_test:
+                    jobs:
+                    - maven/test
 executors:
-  default:
-    description: |
-      The latest minor and patch update of the version 13 JDK image provided by CircleCI.
-    docker:
-    - image: cimg/openjdk:<<parameters.tag>>
-    parameters:
-      tag:
-        default: "13.0"
+    default:
         description: |
-          Can be changed to any of the available tags listed on the DockerHub for this image.
-          https://hub.docker.com/r/cimg/openjdk/tags
-        type: string
+            The latest minor and patch update of the version 13 JDK image provided by CircleCI.
+        docker:
+            - image: cimg/openjdk:<<parameters.tag>>
+        parameters:
+            tag:
+                default: "13.0"
+                description: |
+                    Can be changed to any of the available tags listed on the DockerHub for this image.
+                    https://hub.docker.com/r/cimg/openjdk/tags
+                type: string
 jobs:
-  parallel_test:
-    description: |
-      Checkout, build, test, and upload test results for a Maven project spreading tests across multiple nodes
-    executor: <<parameters.executor>>
-    parallelism: <<parameters.parallelism>>
-    parameters:
-      app_src_directory:
-        default: ""
-        description: Useful when the source of your maven project is nott in the root
-          directory of your git repo. Supply the name of the directory or relative
-          path of the directory containing your source code.
-        type: string
-      command:
-        default: verify
-        description: The maven command to run.
-        type: string
-      executor:
-        default: default
-        description: The name of custom executor to use
-        type: executor
-      maven_command:
-        default: mvn
-        description: Specify a custom path for invoking maven
-        type: string
-      parallel_it_pattern:
-        default: '**/*IT*.java'
+    parallel_test:
         description: |
-          This is the standard Failsafe pattern, but you can override
-          if you use alternate <includes> patterns in your pom.xml.
-        type: string
-      parallel_test_pattern:
-        default: '**/*Test*.java'
-        description: |
-          This is the standard Surefire pattern, but you can override
-          if you use alternate <includes> patterns in your pom.xml
-        type: string
-      parallelism:
-        default: 2
-        description: How many nodes should testing be split across?
-        type: integer
-      settings_file:
-        default: pom.xml
-        description: Specify a custom settings file to use (optional)
-        type: string
-      test_directory:
-        default: src/test/java
-        description: If following standard maven conventions this does not need to
-          be changed.
-        type: string
-      test_results_path:
-        default: target/surefire-reports
-        description: The path to the test results.
-        type: string
-      cache_key:
-        description: Specify a custom cache key (optional).
-        type: string
-        default: "default"
-    steps:
-    - checkout
-    - run:
-        command: |
-          echo -e "\033[31m\033[4mOrb Notes on Test Splitting\033[0m
-          \033[34mCaveat 1:\033[0m  CircleCI Test Splitting uses filename by default, but JUnit reports use class names.
-          Therefore this orb uses naive translation of linux file paths to dot separated package names and strips the .java suffix.
-          \033[34mCaveat 2:\033[0m  Surefire and Failsafe both allow <includes> in pom configuration (which can come from parent projects).
-          These values are appended to any -DincludeFiles argument (meaning it would still run all tests on every node).
-          Therefore this orb will generate an exclusion list; a list of tests being run on the other nodes, and pass that to surefire/failsafe as an exclusion.
-          \033[34mDebugging:\033[0m This orb will place all files used to decide tests in .circleci/tests and export it as an artifact for inspection/debugging.
-          "
-          mkdir -p .circleci/tests/
-          # generate excluded surefire tests using provided pattern
-          circleci tests glob <<parameters.test_directory>>/<<parameters.parallel_test_pattern>> | \
-            sed -e 's#^<<parameters.test_directory>>/\(.*\)\.java#\1#' | \
-            tr "/" "." > .circleci/tests/surefire_classnames
-          cat .circleci/tests/surefire_classnames | \
-            circleci tests split --split-by=timings --timings-type=classname > /tmp/this_node_tests
-          cat .circleci/tests/surefire_classnames | \
-            grep -xvf /tmp/this_node_tests > .circleci/tests/surefire_classnames_ignore_list
-          # generate excluded failsafe tests using provided pattern
-          circleci tests glob <<parameters.test_directory>>/<<parameters.parallel_it_pattern>> | \
-            sed -e 's#^<<parameters.test_directory>>/\(.*\)\.java#\1#' | \
-            tr "/" "." > .circleci/tests/failsafe_classnames
-          cat .circleci/tests/failsafe_classnames | \
-            circleci tests split --split-by=timings --timings-type=classname > /tmp/this_node_it_tests
-          cat .circleci/tests/failsafe_classnames |  \
-            grep -xvf /tmp/this_node_it_tests > .circleci/tests/failsafe_classnames_ignore_list
-        name: Enable Test Splitting
-    - store_artifacts:
-        path: .circleci/tests/
-    - with_cache:
-        app_src_directory: << parameters.app_src_directory >>
-        settings_file: << parameters.settings_file >>
-        cache_key: << parameters.cache_key >>
+            Checkout, build, test, and upload test results for a Maven project spreading tests across multiple nodes
+        executor: <<parameters.executor>>
+        parallelism: <<parameters.parallelism>>
+        parameters:
+            app_src_directory:
+                default: ""
+                description: Useful when the source of your maven project is nott in the root
+                    directory of your git repo. Supply the name of the directory or relative
+                    path of the directory containing your source code.
+                type: string
+            command:
+                default: verify
+                description: The maven command to run.
+                type: string
+            executor:
+                default: default
+                description: The name of custom executor to use
+                type: executor
+            maven_command:
+                default: mvn
+                description: Specify a custom path for invoking maven
+                type: string
+            parallel_it_pattern:
+                default: '**/*IT*.java'
+                description: |
+                    This is the standard Failsafe pattern, but you can override
+                    if you use alternate <includes> patterns in your pom.xml.
+                type: string
+            parallel_test_pattern:
+                default: '**/*Test*.java'
+                description: |
+                    This is the standard Surefire pattern, but you can override
+                    if you use alternate <includes> patterns in your pom.xml
+                type: string
+            parallelism:
+                default: 2
+                description: How many nodes should testing be split across?
+                type: integer
+            settings_file:
+                default: ""
+                description: Specify a custom settings file to use (optional)
+                type: string
+            test_directory:
+                default: src/test/java
+                description: If following standard maven conventions this does not need to
+                    be changed.
+                type: string
+            test_results_path:
+                default: target/surefire-reports
+                description: The path to the test results.
+                type: string
+            cache_key:
+                description: Specify a custom cache key (optional).
+                type: string
+                default: "default"
         steps:
-        - when:
-            condition: << parameters.settings_file >>
-            steps:
+            - checkout
             - run:
-                command: << parameters.maven_command >> << parameters.command >> -Dsurefire.excludesFile=.circleci/tests/surefire_classnames_ignore_list
-                  -Dfailsafe.excludesFile=.circleci/tests/failsafe_classnames_ignore_list
-                  --settings '<< parameters.settings_file >>'
-                name: Run Tests
-        - unless:
-            condition: << parameters.settings_file >>
-            steps:
-            - run:
+                command: |
+                    echo -e "\033[31m\033[4mOrb Notes on Test Splitting\033[0m
+                    \033[34mCaveat 1:\033[0m  CircleCI Test Splitting uses filename by default, but JUnit reports use class names.
+                    Therefore this orb uses naive translation of linux file paths to dot separated package names and strips the .java suffix.
+                    \033[34mCaveat 2:\033[0m  Surefire and Failsafe both allow <includes> in pom configuration (which can come from parent projects).
+                    These values are appended to any -DincludeFiles argument (meaning it would still run all tests on every node).
+                    Therefore this orb will generate an exclusion list; a list of tests being run on the other nodes, and pass that to surefire/failsafe as an exclusion.
+                    \033[34mDebugging:\033[0m This orb will place all files used to decide tests in .circleci/tests and export it as an artifact for inspection/debugging.
+                    "
+                    mkdir -p .circleci/tests/
+                    # generate excluded surefire tests using provided pattern
+                    circleci tests glob <<parameters.test_directory>>/<<parameters.parallel_test_pattern>> | \
+                      sed -e 's#^<<parameters.test_directory>>/\(.*\)\.java#\1#' | \
+                      tr "/" "." > .circleci/tests/surefire_classnames
+                    cat .circleci/tests/surefire_classnames | \
+                      circleci tests split --split-by=timings --timings-type=classname > /tmp/this_node_tests
+                    cat .circleci/tests/surefire_classnames | \
+                      grep -xvf /tmp/this_node_tests > .circleci/tests/surefire_classnames_ignore_list
+                    # generate excluded failsafe tests using provided pattern
+                    circleci tests glob <<parameters.test_directory>>/<<parameters.parallel_it_pattern>> | \
+                      sed -e 's#^<<parameters.test_directory>>/\(.*\)\.java#\1#' | \
+                      tr "/" "." > .circleci/tests/failsafe_classnames
+                    cat .circleci/tests/failsafe_classnames | \
+                      circleci tests split --split-by=timings --timings-type=classname > /tmp/this_node_it_tests
+                    cat .circleci/tests/failsafe_classnames |  \
+                      grep -xvf /tmp/this_node_it_tests > .circleci/tests/failsafe_classnames_ignore_list
+                name: Enable Test Splitting
+            - store_artifacts:
+                path: .circleci/tests/
+            - with_cache:
                 app_src_directory: << parameters.app_src_directory >>
-                command: << parameters.maven_command >> << parameters.command >> -Dsurefire.excludesFile=.circleci/tests/surefire_classnames_ignore_list
-                  -Dfailsafe.excludesFile=.circleci/tests/failsafe_classnames_ignore_list
-                name: Run Tests
-    - process_test_results:
-        test_results_path: << parameters.test_results_path >>
-  test:
-    description: |
-      Checkout, build, test, and upload test results for a Maven project.
-    executor: <<parameters.executor>>
-    parameters:
-      app_src_directory:
-        default: ""
-        description: Useful when the source of your maven project is nott in the root
-          directory of your git repo. Supply the name of the directory or relative
-          path of the directory containing your source code.
-        type: string
-      command:
-        default: verify
-        description: The maven command to run.
-        type: string
-      executor:
-        default: default
-        description: The name of custom executor to use
-        type: executor
-      maven_command:
-        default: mvn
-        description: Specify a custom path for invoking maven
-        type: string
-      settings_file:
-        default: pom.xml
-        description: Specify a custom settings file to use (optional)
-        type: string
-      test_results_path:
-        default: target/surefire-reports
-        description: The path to the test results.
-        type: string
-      cache_key:
-        description: Specify a custom cache key (optional).
-        type: string
-        default: "default"
-    steps:
-    - checkout
-    - with_cache:
-        app_src_directory: << parameters.app_src_directory >>
-        settings_file: << parameters.settings_file >>
-        cache_key: << parameters.cache_key >>
+                settings_file: << parameters.settings_file >>
+                cache_key: << parameters.cache_key >>
+                steps:
+                    - run:
+                        command: |
+                            if [ -n "<< parameters.settings_file >>" ]; then
+                              set -- "$@" --settings "<< parameters.settings_file >>"
+                            fi
+                            << parameters.maven_command >> << parameters.command >> -Dsurefire.excludesFile=.circleci/tests/surefire_classnames_ignore_list -Dfailsafe.excludesFile=.circleci/tests/failsafe_classnames_ignore_list "$@"
+                        name: Run Tests
+                        working_directory: << parameters.app_src_directory >>
+            - process_test_results:
+                test_results_path: << parameters.test_results_path >>
+    test:
+        description: |
+            Checkout, build, test, and upload test results for a Maven project.
+        executor: <<parameters.executor>>
+        parameters:
+            app_src_directory:
+                default: ""
+                description: Useful when the source of your maven project is nott in the root directory of your git repo. Supply the name of the directory or relative path of the directory containing your source code.
+                type: string
+            command:
+                default: verify
+                description: The maven command to run.
+                type: string
+            executor:
+                default: default
+                description: The name of custom executor to use
+                type: executor
+            maven_command:
+                default: mvn
+                description: Specify a custom path for invoking maven
+                type: string
+            settings_file:
+                default: pom.xml
+                description: Specify a custom settings file to use (optional)
+                type: string
+            test_results_path:
+                default: target/surefire-reports
+                description: The path to the test results.
+                type: string
+            cache_key:
+                description: Specify a custom cache key (optional).
+                type: string
+                default: "default"
         steps:
-        - when:
-            condition: << parameters.settings_file >>
-            steps:
-            - run:
-                command: << parameters.maven_command >> << parameters.command >> --settings
-                  '<< parameters.settings_file >>';
-                name: Run Tests
-                working_directory: << parameters.app_src_directory >>
-        - unless:
-            condition: << parameters.settings_file >>
-            steps:
-            - run:
-                command: << parameters.maven_command >> << parameters.command >>;
-                name: Run Tests
-                working_directory: << parameters.app_src_directory >>
-    - process_test_results:
-        test_results_path: << parameters.test_results_path >>
+            - checkout
+            - with_cache:
+                app_src_directory: << parameters.app_src_directory >>
+                settings_file: << parameters.settings_file >>
+                cache_key: << parameters.cache_key >>
+                steps:
+                    - run:
+                        command: |
+                            if [ -n "<< parameters.settings_file >>" ]; then
+                              set -- "$@" --settings "<< parameters.settings_file >>"
+                            fi
+                            << parameters.maven_command >> << parameters.command >> "$@"
+                        name: Run Tests
+                        working_directory: << parameters.app_src_directory >>
+            - process_test_results:
+                test_results_path: << parameters.test_results_path >>
 version: 2.1
