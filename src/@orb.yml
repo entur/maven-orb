@@ -150,36 +150,24 @@ commands:
                       return 1
                     }
                     # https://lists.apache.org/thread.html/7c6096fbd87f6772c9fe0d3dc15e44305b5395c75a85559caa7f3943%401417998306%40%3Cdev.maven.apache.org%3E
-                    << parameters.maven_command >> dependency:list -Dsort=true -DoutputAbsoluteArtifactFilename=true -DexcludeReactor=false -DexcludeTransitive=false > /tmp/dependencies.txt
-                    << parameters.maven_command >> dependency:resolve-plugins -Dsort=true > /tmp/plugins.txt
+                    << parameters.maven_command >> dependency:list dependency:resolve-plugin -Dsort=true -DoutputAbsoluteArtifactFilename=true -DexcludeReactor=false -DexcludeTransitive=false > /tmp/dependencies.txt
                     input="/tmp/dependencies.txt"
-                    plugins="/tmp/plugins.txt"
                     # read all dependencies
                     capture=false
                     artifacts=()
                     while IFS= read -r line
                     do
-                      if beginswith "[INFO] The following files have been resolved:" "$line"; then
+                      if beginswith "[INFO] The following plugins have been resolved:" "$line"; then
                         capture=true
-                      elif $capture && beginswith "[INFO]    " "$line"; then
-                        #SUBSTRING=$(echo $line | rev | cut -d'/' -f 1 | rev)
+                      elif beginswith "[INFO] The following plugins have been resolved:" "$line"; then
+                        capture=true
+                      elif $capture && endswith ".jar" "$line"; then
                         SUBSTRING=${line##*/}
                         artifacts+=( $SUBSTRING )
-                      elif beginswith "[INFO]"; then
+                      elif [[ "[INFO] " == $line ]] ; then
                         capture=false
                       fi
                     done < "$input"
-                    # read all plugins
-                    while IFS= read -r line
-                    do
-                      if beginswith "[INFO]     Plugin Dependency Resolved: " "$line"; then
-                        SUBSTRING=${line##*: }
-                        artifacts+=( $SUBSTRING )
-                      elif beginswith "[INFO] Plugin Resolved: " "$line"; then
-                        SUBSTRING=${line##*: }
-                        artifacts+=( $SUBSTRING )
-                      fi
-                    done < "$plugins"
                     # convert to unique list - https://www.artificialworlds.net/blog/2012/10/17/bash-associative-array-examples/
                     declare -A uniqueArtifacts
                     for i in "${artifacts[@]}"; do uniqueArtifacts["$i"]=1; done
