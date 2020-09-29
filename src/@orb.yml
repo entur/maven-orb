@@ -245,7 +245,8 @@ description: |
     Simplify common tasks for building and testing Java projects using Maven on CircleCI.
     Based on the official CircleCI Maven orb version 1.0.2 , this orb takes advantange of the git history when
     restoring caches, improving build time when build files are modified. Skips going offline if <modules>
-    are detected within the root pom.xml
+    are detected within the root pom.xml. Note that for multimodule builds the Maven task should be 'install'
+    and not 'verify', so that dependencies can be resolved afterwards.
 display:
     home_url: https://maven.apache.org/
     source_url: https://github.com/entur/maven-orb
@@ -261,7 +262,7 @@ examples:
                 maven_test:
                     jobs:
                     - maven/test:
-                        command: -X verify
+                        command: -X install
     custom_test_results_path:
         description: |
             If your tests results are not in the default (target/surefire-reports) directory then you could add a custom directory.
@@ -414,7 +415,7 @@ jobs:
                 description: Useful when the source of your maven project is nott in the root directory of your git repo. Supply the name of the directory or relative path of the directory containing your source code.
                 type: string
             command:
-                default: verify
+                default: install
                 description: The maven command to run.
                 type: string
             executor:
