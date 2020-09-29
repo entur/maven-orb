@@ -118,7 +118,7 @@ commands:
                     fi
             - run:
                 command: |
-                    if grep -q "<modules>" pom.xml; then
+                    if ! grep -q "<modules>" pom.xml; then
                       if [ -n "<< parameters.settings_file >>" ]; then
                         set -- "$@" --settings "<< parameters.settings_file >>"
                       fi
