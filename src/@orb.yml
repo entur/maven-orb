@@ -118,11 +118,14 @@ commands:
                     fi
             - run:
                 command: |
-                    if [ -n "<< parameters.settings_file >>" ]; then
-                      set -- "$@" --settings "<< parameters.settings_file >>"
+                    modules=$(xmllint --xpath "count(//*[local-name()='modules']/*[local-name()='module'])" pom.xml )
+                    if [ "$modules" -eq "0" ]; then
+                      if [ -n "<< parameters.settings_file >>" ]; then
+                        set -- "$@" --settings "<< parameters.settings_file >>"
+                      fi
+                      << parameters.maven_command >> dependency:go-offline "$@"
                     fi
-                    << parameters.maven_command >> dependency:go-offline "$@"
-                name: Install Dependencies
+                name: Install Dependencies (if not multi-module project)
                 working_directory: << parameters.app_src_directory >>
             - steps: << parameters.steps >>
             - run:
@@ -145,8 +148,8 @@ commands:
                       for e; do endswith "$match" "$e" && return 0; done
                       return 1
                     }
-                    mvn dependency:list -Dsort=true -DoutputAbsoluteArtifactFilename=true > /tmp/test/dependencies.txt
-                    mvn dependency:resolve-plugins -Dsort=true > /tmp/plugins.txt
+                    << parameters.maven_command >> dependency:list -Dsort=true -DoutputAbsoluteArtifactFilename=true > /tmp/test/dependencies.txt
+                    << parameters.maven_command >> dependency:resolve-plugins -Dsort=true > /tmp/plugins.txt
                     input="/tmp/dependencies.txt"
                     plugins="/tmp/plugins.txt"
                     # read all dependencies
@@ -209,6 +212,7 @@ commands:
                     do
                       rm -rf $directory
                     done
+                working_directory: << parameters.app_src_directory >>
             - run:
                 name: Set cache flags for a successful build.
                 when: on_success
