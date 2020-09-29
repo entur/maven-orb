@@ -216,7 +216,7 @@ commands:
             # delete targets
             for directory in "${!uniqueDirectoriesToBeDeleted[@]}"
             do
-              echo "MOHAHAH $directory"
+              rm -rf $directory
             done
     - run:
         name: Set cache flags for a successful build.
