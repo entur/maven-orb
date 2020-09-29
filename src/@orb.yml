@@ -191,11 +191,9 @@ commands:
                     artifactsToBeDeleted=()
                     for jarFile in "${jarFiles[@]}"
                     do
-                      fileName=$(echo $jarFile | rev | cut -d'/' -f 1 | rev)
-                      if ! containsElement "$fileName" "${!uniqueArtifacts[@]}"; then
+                      fileName=${jarFile##*/}
+                      if ! [ ${uniqueArtifacts[$fileName]+_} ]; then
                         artifactsToBeDeleted+=( $jarFile )
-                      else
-                        echo "Keep $fileName"
                       fi
                     done
                     #printf '%s\n' "${artifactsToBeDeleted[@]}"
