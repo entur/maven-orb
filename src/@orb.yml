@@ -150,7 +150,11 @@ commands:
                       return 1
                     }
                     # https://lists.apache.org/thread.html/7c6096fbd87f6772c9fe0d3dc15e44305b5395c75a85559caa7f3943%401417998306%40%3Cdev.maven.apache.org%3E
-                    << parameters.maven_command >> dependency:list dependency:resolve-plugin -Dsort=true -DoutputAbsoluteArtifactFilename=true -DexcludeReactor=false -DexcludeTransitive=false > /tmp/dependencies.txt
+                    << parameters.maven_command >> dependency:list dependency:resolve-plugin -Dsort=true -DoutputAbsoluteArtifactFilename=true -DexcludeReactor=false -DexcludeTransitive=false -DincludeParents=true > /tmp/dependencies.txt
+                    if [ $? -eq 0 ]
+                      # attmept to work around android aar issue
+                      << parameters.maven_command >> dependency:list dependency:resolve-plugin -Dsort=true -DoutputAbsoluteArtifactFilename=true -DexcludeReactor=false -DexcludeTransitive=false > /tmp/dependencies.txt                    
+                    fi
                     input="/tmp/dependencies.txt"
                     # read all dependencies
                     capture=false
