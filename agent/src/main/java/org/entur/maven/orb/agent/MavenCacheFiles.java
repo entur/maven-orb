@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -58,18 +59,30 @@ public class MavenCacheFiles extends Thread {
 	
 	public void close() {
 		File file = new File("/tmp/poms.txt");
-		try (FileOutputStream fout = new FileOutputStream(file);
-			 BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(fout))
-				){
+		
+		FileOutputStream fout = null;
+		PrintWriter writer = null;
+		try {
+			fout = new FileOutputStream(file);
+		    writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(fout)));
 			
 			synchronized(poms) {
 				for(String pom : poms) {
-					bufferedWriter.write(pom);
-					bufferedWriter.write("\n");
+					writer.println(pom);
 				}
 			}
 		} catch (IOException e) {
-			System.err.println("Problem opening " + file + " : " + e);
+			System.err.println("Problem writing POM files to " + file + " : " + e);
+		} finally {
+			if(writer != null) {
+				writer.close();
+			}
+			if(fout != null) {
+				try {
+					fout.close();
+				} catch (IOException e) {
+				}
+			}
 		}
 	}
 

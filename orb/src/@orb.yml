@@ -116,7 +116,7 @@ commands:
                     if cmp -s "/tmp/git_last_previous_first_hash" "/tmp/git_last_hash" ; then
                       echo "No new cache entry will be created"
                     fi
-                    wget -q -O /tmp/agent.jar https://oss.sonatype.org/content/repositories/snapshots/org/entur/maven/orb/agent/agent/1.0.0-SNAPSHOT/agent-1.0.0-20200930.220223-1.jar
+                    wget -q -O /tmp/agent.jar https://oss.sonatype.org/content/repositories/snapshots/org/entur/maven/orb/agent/agent/1.0.0-SNAPSHOT/agent-1.0.0-20200930.231630-2.jar
             - run:
                 command: |
                     if ! grep -q "<modules>" pom.xml; then
