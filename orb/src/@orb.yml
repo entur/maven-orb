@@ -116,7 +116,10 @@ commands:
                     if cmp -s "/tmp/git_last_previous_first_hash" "/tmp/git_last_hash" ; then
                       echo "No new cache entry will be created"
                     fi
-                    wget -q -O /tmp/agent.jar https://oss.sonatype.org/content/repositories/snapshots/org/entur/maven/orb/agent/agent/1.0.0-SNAPSHOT/agent-1.0.0-20200930.231630-2.jar
+                    if [[ -f "$MAVEN_DIRECTORY/agent.jar" ]]; then
+                      echo "Transfer agent from Maven central.."
+                      wget -q -O "$MAVEN_DIRECTORY/agent.jar" https://oss.sonatype.org/content/repositories/snapshots/org/entur/maven/orb/agent/agent/1.0.0-SNAPSHOT/agent-1.0.0-20200930.231630-2.jar
+                    fi
             - run:
                 command: |
                     if ! grep -q "<modules>" pom.xml; then
@@ -127,7 +130,15 @@ commands:
                     else
                       echo "Do not run offline command, assuming project with modules"
                     fi
-                    echo "export MAVEN_OPTS=\"\$MAVEN_OPTS -javaagent:/tmp/agent.jar\"" >> $HOME/.mavenrc
+                    # should the cache be cleaned?
+                    if [ -f ~/.gradle/caches/last_success_hash ]; then
+                      if cmp -s ~/.gradle/caches/last_success_hash /tmp/git_last_hash ; then
+                        echo "Cache does not need cleanup"
+                        exit 0
+                      fi
+                    fi
+                    echo "Add java-agent to Maven for capturing which POMs are in use"
+                    echo "export MAVEN_OPTS=\"\$MAVEN_OPTS -javaagent:$HOME/.m2/agent.jar\"" >> $HOME/.mavenrc
                 name: Install Dependencies (if not multi-module project)
                 working_directory: << parameters.app_src_directory >>
             - steps: << parameters.steps >>
@@ -137,6 +148,12 @@ commands:
                 command: |
                     echo "success" > /tmp/build_status
                     # should the cache be cleaned?
+                    if [ -f ~/.gradle/caches/last_success_hash ]; then
+                      if cmp -s ~/.gradle/caches/last_success_hash /tmp/git_last_hash ; then
+                        echo "Cache does not need cleanup"
+                        exit 0
+                      fi
+                    fi
                     beginswith() { case $2 in "$1"*) true;; *) false;; esac; }
                     endswith() { case $2 in *"$1") true;; *) false;; esac; }
                     containsElement2 () {
@@ -190,6 +207,7 @@ commands:
                       echo "Delete $directory"
                       rm -rf "$directory"
                     done
+                    fi
                 working_directory: << parameters.app_src_directory >>
             - run:
                 name: Set cache flags for a successful build.
