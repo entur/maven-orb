@@ -26,7 +26,7 @@ workflows:
           filters:
             branches:
               ignore: master
-          orb-path: src/@orb.yml
+          orb-path: orb/src/@orb.yml
           orb-ref: entur/maven-orb@dev:$CIRCLE_BRANCH
       - orb-tools/increment:
           name: release
@@ -34,7 +34,7 @@ workflows:
           filters:
             branches:
               only: master
-          orb-path: src/@orb.yml
+          orb-path: orb/src/@orb.yml
           orb-ref: entur/maven-orb
           requires:
             - lint
