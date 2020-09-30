@@ -115,9 +115,10 @@ commands:
                     if cmp -s "/tmp/git_last_previous_first_hash" "/tmp/git_last_hash" ; then
                       echo "No new cache entry will be created"
                     fi
-                    if [[ -f ~/.m2/agent.jar ]]; then
+                    if ! [[ -f ~/.m2/agent.jar ]]; then
                       echo "Transfer agent from Maven central.."
                       wget -q -O ~/.m2/agent.jar https://oss.sonatype.org/content/repositories/snapshots/org/entur/maven/orb/agent/agent/1.0.0-SNAPSHOT/agent-1.0.0-20200930.231630-2.jar
+                      echo "Transfer completed.."
                     fi
             - run:
                 command: |
@@ -136,7 +137,7 @@ commands:
                         exit 0
                       fi
                     fi
-                    echo "Add java-agent to Maven for capturing which POMs are in use"
+                    echo "Activate java-agent to Maven for capturing which POMs are in use"
                     echo "export MAVEN_OPTS=\"\$MAVEN_OPTS -javaagent:$HOME/.m2/agent.jar\"" >> $HOME/.mavenrc
                 name: Install Dependencies (if not multi-module project)
                 working_directory: << parameters.app_src_directory >>
