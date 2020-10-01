@@ -32,7 +32,7 @@ commands:
           command: |
             mkdir -p ~/.m2
             echo -e << parameters.settings-file >> > ~/.m2/settings.xml
-  release:
+  perform_release:
     steps:
       - run:
           name: Upload to Maven central (release or snapshot depends on version in pom).
@@ -74,7 +74,7 @@ jobs:
           settings-file: *maven-settings-file
       - maven/with_cache:
           - steps:
-              - release
+              - perform_release
 
 workflows:
   verify:
