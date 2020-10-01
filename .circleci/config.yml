@@ -3,19 +3,8 @@ version: 2.1
 orbs:
   orb-tools: circleci/orb-tools@3.0.0
   maven: circleci/maven@1.0.2
+
 aliases:
-  - &release
-    name: Upload to Maven central (release or snapshot depends on version in pom).
-    command: |
-      if [ "$(git log -n 1 --pretty="%an")" == "Renovate Bot" ]; then
-        echo "Skipping release due to Renovate bot"
-      else
-        echo "Start upload"
-        cd agent
-        git config --global user.email "circleci@entur.no"
-        git config --global user.name "circleci"
-        mvn deploy -DskipTests -Prelease
-      fi
   - &import_gpg_key
     name: Configure GPG private key for signing project artifacts in OSS Sonatype
     command: |
@@ -32,10 +21,6 @@ aliases:
             </servers>
           </settings>\""
 
-  - &java-container-config
-    docker:
-      - image: circleci/openjdk:11-jdk
-
 commands:
   generate-maven-settings-file:
     parameters:
@@ -47,12 +32,32 @@ commands:
           command: |
             mkdir -p ~/.m2
             echo -e << parameters.settings-file >> > ~/.m2/settings.xml
+  release:
+    steps:
+      - run:
+          name: Upload to Maven central (release or snapshot depends on version in pom).
+          command: |
+            if [ "$(git log -n 1 --pretty="%an")" == "Renovate Bot" ]; then
+              echo "Skipping release due to Renovate bot"
+            else
+              echo "Start upload"
+              cd agent
+              git config --global user.email "circleci@entur.no"
+              git config --global user.name "circleci"
+              mvn deploy -DskipTests -Prelease
+            fi
 
 executors:
   lint-condo:
     resource_class: small
     docker:
       - image: singapore/lint-condo
+  java:
+    docker:
+      - image: circleci/openjdk:11-jdk
+        environment:
+          _JAVA_OPTIONS: -Xmx1027m
+          TERM: dumb
 
 jobs:
   lint:
@@ -61,9 +66,7 @@ jobs:
       - checkout
       - run: yamllint .
   release:
-    <<: *java-container-config
-    environment:
-      MAVEN_OPTS: -Xmx1G -Xms128m
+    executor: java
     steps:
       - checkout
       - run: *import_gpg_key
@@ -71,7 +74,7 @@ jobs:
           settings-file: *maven-settings-file
       - maven/with_cache:
           - steps:
-              - run: *release
+              - release
 
 workflows:
   verify:
