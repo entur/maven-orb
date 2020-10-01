@@ -131,13 +131,13 @@ commands:
                       echo "Do not run offline command, assuming project with modules"
                     fi
                     # should the cache be cleaned?
-                    if [ -f ~/.gradle/caches/last_success_hash ]; then
-                      if cmp -s ~/.gradle/caches/last_success_hash /tmp/git_last_hash ; then
+                    if [ -f ~/.m2/last_success_hash ]; then
+                      if cmp -s ~/.m2/last_success_hash /tmp/git_last_hash ; then
                         echo "Cache does not need cleanup"
                         exit 0
                       fi
                     fi
-                    echo "Activate java-agent to Maven for capturing which POMs are in use"
+                    echo "Activate java-agent for capturing which POMs are in use"
                     echo "export MAVEN_OPTS=\"\$MAVEN_OPTS -javaagent:$HOME/.m2/agent.jar\"" >> $HOME/.mavenrc
                 name: Install Dependencies (if not multi-module project)
                 working_directory: << parameters.app_src_directory >>
@@ -148,12 +148,13 @@ commands:
                 command: |
                     echo "success" > /tmp/build_status
                     # should the cache be cleaned?
-                    if [ -f ~/.gradle/caches/last_success_hash ]; then
-                      if cmp -s ~/.gradle/caches/last_success_hash /tmp/git_last_hash ; then
+                    if [ -f ~/.m2/last_success_hash ]; then
+                      if cmp -s ~/.m2/last_success_hash /tmp/git_last_hash ; then
                         echo "Cache does not need cleanup"
                         exit 0
                       fi
                     fi
+                    # this is the first successful build with this particular set of build files
                     beginswith() { case $2 in "$1"*) true;; *) false;; esac; }
                     endswith() { case $2 in *"$1") true;; *) false;; esac; }
                     containsElement2 () {
