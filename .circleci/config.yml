@@ -2,12 +2,62 @@ version: 2.1
 
 orbs:
   orb-tools: circleci/orb-tools@3.0.0
+  maven: circleci/maven@1.0.2
+
+aliases:
+  - &import_gpg_key
+    name: Configure GPG private key for signing project artifacts in OSS Sonatype
+    command: |
+      echo $SONATYPE_GPG_KEY_BASE64 | base64 --decode | gpg --batch --no-tty --import --yes
+  - &maven-settings-file
+      "\"<settings xsi:schemaLocation='http://maven.apache.org/SETTINGS/1.1.0 http://maven.apache.org/xsd/settings-1.1.0.xsd' xmlns='http://maven.apache.org/SETTINGS/1.1.0'
+              xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'>
+            <servers>
+              <server>
+                   <username>$SONATYPE_USERNAME</username>
+                   <password>$SONATYPE_PASSWORD</password>
+                   <id>ossrh</id>
+              </server>
+            </servers>
+          </settings>\""
+
+commands:
+  generate-maven-settings-file:
+    parameters:
+      settings-file:
+        type: string
+    steps:
+      - run:
+          name: Generate Maven Settings File
+          command: |
+            mkdir -p ~/.m2
+            echo -e << parameters.settings-file >> > ~/.m2/settings.xml
+  perform_release:
+    steps:
+      - run:
+          name: Upload to Maven central (release or snapshot depends on version in pom).
+          command: |
+            if [ "$(git log -n 1 --pretty="%an")" == "Renovate Bot" ]; then
+              echo "Skipping release due to Renovate bot"
+            else
+              echo "Start upload"
+              cd agent
+              git config --global user.email "circleci@entur.no"
+              git config --global user.name "circleci"
+              mvn deploy -DskipTests -Prelease
+            fi
 
 executors:
   lint-condo:
     resource_class: small
     docker:
       - image: singapore/lint-condo
+  java:
+    docker:
+      - image: circleci/openjdk:11-jdk
+        environment:
+          _JAVA_OPTIONS: -Xmx1027m
+          TERM: dumb
 
 jobs:
   lint:
@@ -15,6 +65,17 @@ jobs:
     steps:
       - checkout
       - run: yamllint .
+  release:
+    executor: java
+    steps:
+      - checkout
+      - run: *import_gpg_key
+      - generate-maven-settings-file:
+          settings-file: *maven-settings-file
+      - maven/with_cache:
+          steps:
+            - perform_release
+          app_src_directory: agent
 
 workflows:
   verify:
@@ -26,7 +87,7 @@ workflows:
           filters:
             branches:
               ignore: master
-          orb-path: src/@orb.yml
+          orb-path: orb/src/@orb.yml
           orb-ref: entur/maven-orb@dev:$CIRCLE_BRANCH
       - orb-tools/increment:
           name: release
@@ -34,7 +95,12 @@ workflows:
           filters:
             branches:
               only: master
-          orb-path: src/@orb.yml
+          orb-path: orb/src/@orb.yml
           orb-ref: entur/maven-orb
           requires:
             - lint
+  build_test_deploy:
+    jobs:
+      - release:
+          context: global
+
