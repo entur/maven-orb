@@ -73,8 +73,8 @@ jobs:
       - generate-maven-settings-file:
           settings-file: *maven-settings-file
       - maven/with_cache:
-          - steps:
-              - perform_release
+          steps:
+            - perform_release
 
 workflows:
   verify:
