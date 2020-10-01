@@ -30,8 +30,6 @@ aliases:
                    <id>ossrh</id>
               </server>
             </servers>
-            <profiles>
-        <profile>
           </settings>\""
 
   - &java-container-config
