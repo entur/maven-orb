@@ -75,6 +75,7 @@ jobs:
       - maven/with_cache:
           steps:
             - perform_release
+          app_src_directory: agent
 
 workflows:
   verify:
