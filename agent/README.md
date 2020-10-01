@@ -8,7 +8,7 @@ Results are written to `/tmp/poms.txt`.
 export MAVEN_OPTS="$MAVEN_OPTS -javaagent:/path/to/agent.jar"
 ```
 
-The agent modified the source code of the `java.io.FileInputStream` so that all calls to open is recorded.  
+The agent modifies the source code of the `java.io.FileInputStream` so that all calls to open is recorded.  
 
 ## Shaded contents
 

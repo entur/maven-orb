@@ -2,15 +2,15 @@ version: 2.1
 
 orbs:
   orb-tools: circleci/orb-tools@3.0.0
-
+  maven: circleci/maven@1.0.2
 aliases:
   - &release
-    name: Release
+    name: Upload to Maven central (release or snapshot depends on version in pom).
     command: |
       if [ "$(git log -n 1 --pretty="%an")" == "Renovate Bot" ]; then
-        echo "Skipping release du to Renovate bot"
+        echo "Skipping release due to Renovate bot"
       else
-        echo "Start release"
+        echo "Start upload"
         cd agent
         git config --global user.email "circleci@entur.no"
         git config --global user.name "circleci"
@@ -69,7 +69,9 @@ jobs:
       - run: *import_gpg_key
       - generate-maven-settings-file:
           settings-file: *maven-settings-file
-      - run: *release
+      - maven/with_cache:
+          - steps:
+              - run: *release
 
 workflows:
   verify:

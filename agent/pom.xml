@@ -5,7 +5,7 @@
     <artifactId>agent</artifactId>
 	<name>Maven POM agent</name>
 	<description>Instrumentation agent for detection of POMs in Maven builds</description>    
-    <version>1.0.0</version>
+    <version>1.0.1-SNAPSHOT</version>
     <properties>
         <asm.version>9.0</asm.version>
         <!-- plugins -->
