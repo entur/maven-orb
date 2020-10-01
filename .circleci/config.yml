@@ -93,6 +93,18 @@ aliases:
     docker:
       - image: circleci/openjdk:11-jdk
 
+commands:
+  generate-maven-settings-file:
+    parameters:
+      settings-file:
+        type: string
+    steps:
+      - run:
+          name: Generate Maven Settings File
+          command: |
+            mkdir -p ~/.m2
+            echo -e << parameters.settings-file >> > ~/.m2/settings.xml
+
 executors:
   lint-condo:
     resource_class: small
