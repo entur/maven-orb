@@ -207,7 +207,6 @@ commands:
                       echo "Delete $directory"
                       rm -rf "$directory"
                     done
-                    fi
                 working_directory: << parameters.app_src_directory >>
             - run:
                 name: Set cache flags for a successful build.
