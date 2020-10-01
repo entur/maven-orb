@@ -3,6 +3,8 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.entur.maven.orb.agent</groupId>
     <artifactId>agent</artifactId>
+	<name>Maven POM agent</name>
+	<description>Instrumentation agent for detection of POMs in Maven builds</description>    
     <version>1.0.0</version>
     <properties>
         <asm.version>9.0</asm.version>
@@ -151,6 +153,14 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+	<developers>
+		<developer>
+			<name>Thomas Skjølberg</name>
+			<email>thomas.rorvik.skjolberg@entur.org</email>
+			<organization>Entur</organization>
+			<organizationUrl>https://www.entur.org</organizationUrl>
+		</developer>
+	</developers>    
     <scm>
         <connection>scm:git:ssh://git@github.com/entur/maven-orb.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/entur/maven-orb.git</developerConnection>
