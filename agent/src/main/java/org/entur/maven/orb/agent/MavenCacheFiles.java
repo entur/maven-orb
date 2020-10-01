@@ -63,7 +63,7 @@ public class MavenCacheFiles extends Thread {
 		FileOutputStream fout = null;
 		PrintWriter writer = null;
 		try {
-			fout = new FileOutputStream(file);
+			fout = new FileOutputStream(file, true); // i.e. append
 		    writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(fout)));
 			
 			synchronized(poms) {
