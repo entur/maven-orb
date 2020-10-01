@@ -59,9 +59,9 @@ commands:
                       # check which previous revision was the last to modify the build files
                       lastPreviousFirstHash=$(git log -n 1 --pretty=format:%H HEAD~1 -- $buildFiles)
                       if [ "$lastPreviousFirstHash" = "$lastHash" ]; then
-                        echo "Build files did not update last commit, last was $lastHash"
+                        echo "Build files did not update last commit"
                       else
-                        echo "Build files did update last commit $lastHash, previous was $lastPreviousFirstHash"
+                        echo "Build files did update last commit"
                       fi
                       if ! [ -z "$lastPreviousFirstHash" ] && [ $(git rev-list --count $lastPreviousFirstHash) -gt "1" ]; then
                         lastPreviousSecondHash=$(git log -n 1 --pretty=format:%H $lastPreviousFirstHash~1 -- $buildFiles)
@@ -74,7 +74,7 @@ commands:
                         fi
                       fi
                     else
-                      echo "Build files did update last commit $lastHash"
+                      echo "Build files did update last commit"
                     fi
                     if [ -z "$lastPreviousFirstHash" ]; then
                       lastPreviousFirstHash=$lastHash
@@ -92,7 +92,7 @@ commands:
                     echo "success" > /tmp/build_status_success
                     echo "failure" > /tmp/build_status_failure
                 name: Generate Cache Checksum
-                working_directory: $CIRCLE_WORKING_DIRECTORY/<< parameters.app_src_directory >>
+                working_directory: << parameters.app_src_directory >>
             - restore_cache:
                 keys:
                     - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
