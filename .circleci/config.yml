@@ -3,6 +3,96 @@ version: 2.1
 orbs:
   orb-tools: circleci/orb-tools@3.0.0
 
+aliases:
+  - &release
+    name: Release
+    command: |
+      if [ "$(git log -n 1 --pretty="%an")" == "Renovate Bot" ]; then
+        echo "Skipping release du to Renovate bot"
+      else
+        echo "Start release"
+        cd agent
+        git config --global user.email "circleci@entur.no"
+        git config --global user.name "circleci"
+        mvn gitflow:release-start gitflow:release-finish -Prelease -DpostReleaseGoals=deploy -DargLine=-Prelease -B
+        git pull --no-edit
+        mvn deploy -DskipTests -Pentur-maven-central-local
+      fi
+  - &import_gpg_key
+    name: Configure GPG private key for signing project artifacts in OSS Sonatype
+    command: |
+      echo $SONATYPE_GPG_KEY_BASE64 | base64 --decode | gpg --batch --no-tty --import --yes
+  - &maven-settings-file
+      "\"<settings xsi:schemaLocation='http://maven.apache.org/SETTINGS/1.1.0 http://maven.apache.org/xsd/settings-1.1.0.xsd' xmlns='http://maven.apache.org/SETTINGS/1.1.0'
+              xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'>
+            <servers>
+            <server>
+                   <username>$SONATYPE_USERNAME</username>
+                   <password>$SONATYPE_PASSWORD</password>
+                   <id>ossrh</id>
+                 </server>
+              <server>
+                <username>$ARTIFACTORY_USER</username>
+                <password>$ARTIFACTORY_PASSWORD</password>
+                <id>central</id>
+              </server>
+              <server>
+                <username>$ARTIFACTORY_USER</username>
+                <password>$ARTIFACTORY_PASSWORD</password>
+                <id>snapshots</id>
+              </server>
+              <server>
+                <username>$ARTIFACTORY_USER</username>
+                <password>$ARTIFACTORY_PASSWORD</password>
+                <id>entur-maven-central-local</id>
+                </server>
+            </servers>
+            <profiles>
+        <profile>
+          <repositories>
+            <repository>
+              <snapshots>
+                <enabled>false</enabled>
+              </snapshots>
+              <id>central</id>
+              <name>entur-team-kontobasert-billettering-release</name>
+              <url>https://entur2.jfrog.io/entur2/entur-team-kontobasert-billettering-release</url>
+            </repository>
+            <repository>
+              <snapshots />
+              <id>snapshots</id>
+              <name>entur-team-kontobasert-billettering-snapshot</name>
+              <url>https://entur2.jfrog.io/entur2/entur-team-kontobasert-billettering-snapshot</url>
+            </repository>
+          </repositories>
+          <pluginRepositories>
+            <pluginRepository>
+              <snapshots>
+                <enabled>false</enabled>
+              </snapshots>
+              <id>central</id>
+              <name>entur-team-kontobasert-billettering-release</name>
+              <url>https://entur2.jfrog.io/entur2/entur-team-kontobasert-billettering-release</url>
+            </pluginRepository>
+            <pluginRepository>
+              <snapshots />
+              <id>snapshots</id>
+              <name>entur-team-kontobasert-billettering-snapshot</name>
+              <url>https://entur2.jfrog.io/entur2/entur-team-kontobasert-billettering-snapshot</url>
+            </pluginRepository>
+          </pluginRepositories>
+          <id>artifactory</id>
+        </profile>
+            </profiles>
+            <activeProfiles>
+              <activeProfile>artifactory</activeProfile>
+            </activeProfiles>
+          </settings>\""
+
+  - &java-container-config
+    docker:
+      - image: circleci/openjdk:11-jdk
+
 executors:
   lint-condo:
     resource_class: small
@@ -15,6 +105,16 @@ jobs:
     steps:
       - checkout
       - run: yamllint .
+  release:
+    <<: *java-container-config
+    environment:
+      MAVEN_OPTS: -Xmx1G -Xms128m
+    steps:
+      - checkout
+      - run: *import_gpg_key
+      - generate-maven-settings-file:
+          settings-file: *maven-settings-file
+      - run: *release
 
 workflows:
   verify:
@@ -38,3 +138,8 @@ workflows:
           orb-ref: entur/maven-orb
           requires:
             - lint
+  build_test_deploy:
+    jobs:
+      - release:
+          context: global
+
