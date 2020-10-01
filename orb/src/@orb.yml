@@ -51,7 +51,7 @@ commands:
             - run:
                 command: |
                     # find build files
-                    buildFiles=$(find . -name '<< parameters.settings_file >>' | sed 's/.*/&/' | tr '\n' ' ')
+                    buildFiles=$(find . -name 'pom.xml' | sed 's/.*/&/' | tr '\n' ' ')
                     # get the latest commit which modified the build files
                     lastHash=$(git log -n 1 --pretty=format:%H HEAD -- $buildFiles)
                     # do a check that there actually is more than one revision
