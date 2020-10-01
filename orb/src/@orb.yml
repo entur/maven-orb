@@ -91,7 +91,7 @@ commands:
                     echo "$lastHash" > /tmp/git_last_hash
                     echo "success" > /tmp/build_status_success
                     echo "failure" > /tmp/build_status_failure
-                name: Generate Cache Checksum
+                name: Generate Maven Cache Checksum
                 working_directory: << parameters.app_src_directory >>
             - restore_cache:
                 keys:
@@ -104,7 +104,7 @@ commands:
                     - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
                     - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
             - run:
-                name: Prepare cache cleanup.
+                name: Prepare Maven cache cleanup (if necessary)
                 command: |
                     touch /tmp/git_last_hash
                     if [[ ! -e ~/.m2 ]]; then
@@ -139,11 +139,11 @@ commands:
                     fi
                     echo "Activate java-agent for capturing which POMs are in use"
                     echo "export MAVEN_OPTS=\"\$MAVEN_OPTS -javaagent:$HOME/.m2/agent.jar\"" >> $HOME/.mavenrc
-                name: Install Dependencies (if not multi-module project)
+                name: Install Maven Dependencies (if not multi-module project)
                 working_directory: << parameters.app_src_directory >>
             - steps: << parameters.steps >>
             - run:
-                name: Perform cache cleanup.
+                name: Perform Maven cache cleanup
                 when: on_success
                 command: |
                     echo "success" > /tmp/build_status
@@ -210,13 +210,13 @@ commands:
                     done
                 working_directory: << parameters.app_src_directory >>
             - run:
-                name: Set cache flags for a successful build.
+                name: Set cache flags for a successful build
                 when: on_success
                 command: |
                     echo "success" > /tmp/build_status
                     cp /tmp/git_last_hash ~/.m2/last_success_hash
             - run:
-                name: Set cache flags for a failed build.
+                name: Set cache flags for a failed build
                 when: on_fail
                 command: |
                     # if the build has previously run successfully for this hash, we don't want to save another cache (which then would never be used, and would consume time and storage space)
@@ -232,6 +232,7 @@ commands:
                       echo "failure" > /tmp/build_status
                     fi
             - save_cache:
+                name: Save Maven cache (if does not exist already)
                 key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status" }}
                 when: always
                 paths:
