@@ -61,7 +61,7 @@ commands:
                       if [ "$lastPreviousFirstHash" = "$lastHash" ]; then
                         echo "Build files did not update last commit, last was $lastHash"
                       else
-                        echo "Build files did update last commit $lastHash, previous was "$lastPreviousFirstHash"
+                        echo "Build files did update last commit $lastHash, previous was $lastPreviousFirstHash"
                       fi
                       if ! [ -z "$lastPreviousFirstHash" ] && [ $(git rev-list --count $lastPreviousFirstHash) -gt "1" ]; then
                         lastPreviousSecondHash=$(git log -n 1 --pretty=format:%H $lastPreviousFirstHash~1 -- $buildFiles)
