@@ -44,11 +44,11 @@ public class FileTransformer implements ClassFileTransformer {
 	public FileTransformer() {
 		this.targetClassName = FileInputStream.class.getName().replaceAll("\\.", "/");
 	}
+	
 	/*
 	public byte[] transform(Module module, ClassLoader loader, String className, Class<?> classBeingRedefined,
-			ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
-		System.out.println("Actually transform " + className);
-		return null;
+			ProtectionDomain protectionDomain, byte[] byteCode) throws IllegalClassFormatException {
+		return transform(loader, className, classBeingRedefined, protectionDomain, byteCode);
 	}
 	*/
 	

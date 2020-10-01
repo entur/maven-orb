@@ -74,7 +74,7 @@ commands:
                         fi
                       fi
                     else
-                      echo "Build files did update last commit 2"
+                      echo "Build files did update last commit"
                     fi
                     if [ -z "$lastPreviousFirstHash" ]; then
                       lastPreviousFirstHash=$lastHash

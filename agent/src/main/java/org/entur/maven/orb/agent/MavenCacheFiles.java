@@ -51,7 +51,6 @@ public class MavenCacheFiles extends Thread {
 	}
 	
 	public void add(String name) {
-		System.out.println("Add " + name);
 		synchronized(poms) {
 			poms.add(name);
 		}

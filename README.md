@@ -42,4 +42,4 @@ For a detailed caching strategy walkthrough, see our [Gradle orb](https://github
 If the cache is corrupted, update the cache key, so that the previous state is not restored - as in the official Maven orb.
 
 [issue-tracker]:               https://github.com/entur/maven-orb
-[CircleCI Gradle]:             https://circleci.com/orbs/registry/orb/circleci/maven
+[CircleCI Maven]:             https://circleci.com/orbs/registry/orb/circleci/maven
