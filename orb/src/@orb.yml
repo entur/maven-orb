@@ -241,8 +241,7 @@ description: |
     Simplify common tasks for building and testing Java projects using Maven on CircleCI.
     Based on the official CircleCI Maven orb version 1.0.2 , this orb takes advantange of the git history when
     restoring caches, improving build time when build files are modified. Skips going offline if <modules>
-    are detected within the root pom.xml. Note that for multimodule builds the Maven task should be 'install'
-    and not 'verify', so that dependencies can be resolved afterwards.
+    are detected within the root pom.xml.
 display:
     home_url: https://maven.apache.org/
     source_url: https://github.com/entur/maven-orb
