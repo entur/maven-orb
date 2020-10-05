@@ -94,6 +94,7 @@ commands:
                 name: Generate Maven Cache Checksum
                 working_directory: << parameters.app_src_directory >>
             - restore_cache:
+                name: Restore Maven cache (searches history up to three previous commits)
                 keys:
                     - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
                     - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
