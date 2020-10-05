@@ -91,7 +91,7 @@ commands:
                     echo "$lastHash" > /tmp/git_last_hash
                     echo "success" > /tmp/build_status_success
                     echo "failure" > /tmp/build_status_failure
-                name: Generate Maven Cache Checksum
+                name: Generate Maven cache checksum
                 working_directory: << parameters.app_src_directory >>
             - restore_cache:
                 name: Restore Maven cache (searches history up to three previous commits)
@@ -143,7 +143,7 @@ commands:
                     fi
                     echo "Activate java-agent for capturing which POMs are in use"
                     echo "export MAVEN_OPTS=\"\$MAVEN_OPTS -javaagent:$HOME/.m2/repository/agent.jar\"" >> $HOME/.mavenrc
-                name: Install Maven Dependencies (if not multi-module project)
+                name: Install Maven dependencies (if not multi-module project)
                 working_directory: << parameters.app_src_directory >>
             - steps: << parameters.steps >>
             - run:
