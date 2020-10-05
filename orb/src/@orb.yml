@@ -23,7 +23,7 @@ commands:
                 saved by a previous build. The provided `steps` parameter will then be executed, and
                 if successful, then a fresh cache will be saved, if required.
 
-                The contents of the `~/.m2` directory is cached, which will substantially
+                The contents of the `~/.m2/repository` directory is cached, which will substantially
                 improve build times for projects with many dependencies.
 
                 The cache-key is generated using the commit hash from from any files named
@@ -110,14 +110,17 @@ commands:
                     if [[ ! -e ~/.m2 ]]; then
                       mkdir -p ~/.m2
                     fi
+                    if [[ ! -e ~/.m2/repository ]]; then
+                      mkdir -p ~/.m2/repository
+                    fi
                     echo "Folder sizes:"
-                    du -h --max-depth=1 ~/.m2
+                    du -h --max-depth=1 ~/.m2/repository
                     if cmp -s "/tmp/git_last_previous_first_hash" "/tmp/git_last_hash" ; then
                       echo "No new cache entry will be created"
                     fi
-                    if ! [[ -f ~/.m2/agent.jar ]]; then
+                    if ! [[ -f ~/.m2/repository/agent.jar ]]; then
                       echo "Transfer agent from Maven central.."
-                      wget -q -O ~/.m2/agent.jar https://repo1.maven.org/maven2/org/entur/maven/orb/agent/agent/1.0.0/agent-1.0.0.jar
+                      wget -q -O ~/.m2/repository/agent.jar https://repo1.maven.org/maven2/org/entur/maven/orb/agent/agent/1.0.0/agent-1.0.0.jar
                       echo "Transfer completed.."
                     fi
             - run:
@@ -131,14 +134,14 @@ commands:
                       echo "Do not run offline command, assuming project with modules"
                     fi
                     # should the cache be cleaned?
-                    if [ -f ~/.m2/last_success_hash ]; then
-                      if cmp -s ~/.m2/last_success_hash /tmp/git_last_hash ; then
+                    if [ -f ~/.m2/repository/last_success_hash ]; then
+                      if cmp -s ~/.m2/repository/last_success_hash /tmp/git_last_hash ; then
                         echo "Cache does not need cleanup"
                         exit 0
                       fi
                     fi
                     echo "Activate java-agent for capturing which POMs are in use"
-                    echo "export MAVEN_OPTS=\"\$MAVEN_OPTS -javaagent:$HOME/.m2/agent.jar\"" >> $HOME/.mavenrc
+                    echo "export MAVEN_OPTS=\"\$MAVEN_OPTS -javaagent:$HOME/.m2/repository/agent.jar\"" >> $HOME/.mavenrc
                 name: Install Maven Dependencies (if not multi-module project)
                 working_directory: << parameters.app_src_directory >>
             - steps: << parameters.steps >>
@@ -148,8 +151,8 @@ commands:
                 command: |
                     echo "success" > /tmp/build_status
                     # should the cache be cleaned?
-                    if [ -f ~/.m2/last_success_hash ]; then
-                      if cmp -s ~/.m2/last_success_hash /tmp/git_last_hash ; then
+                    if [ -f ~/.m2/repository/last_success_hash ]; then
+                      if cmp -s ~/.m2/repository/last_success_hash /tmp/git_last_hash ; then
                         echo "Cache does not need cleanup"
                         exit 0
                       fi
@@ -177,7 +180,7 @@ commands:
                       SUBSTRING=${line##*/}
                       artifacts[$SUBSTRING]=$line
                     done < "$input"
-                    # Read all the files in the .m2 directory
+                    # Read all the files in the .m2/repository directory
                     echo Start scanning files
                     pomFiles=()
                     while IFS=  read -r -d $'\0'; do
@@ -214,14 +217,14 @@ commands:
                 when: on_success
                 command: |
                     echo "success" > /tmp/build_status
-                    cp /tmp/git_last_hash ~/.m2/last_success_hash
+                    cp /tmp/git_last_hash ~/.m2/repository/last_success_hash
             - run:
                 name: Set cache flags for a failed build
                 when: on_fail
                 command: |
                     # if the build has previously run successfully for this hash, we don't want to save another cache (which then would never be used, and would consume time and storage space)
-                    if [ -f ~/.m2/last_success_hash ]; then
-                      if cmp -s ~/.m2/last_success_hash /tmp/git_last_hash ; then
+                    if [ -f ~/.m2/repository/last_success_hash ]; then
+                      if cmp -s ~/.m2/repository/last_success_hash /tmp/git_last_hash ; then
                         echo "Cache was saved after a previously successful build for the latest build file changes, creating another cache entry for the failed state is unnecessary."
                         # emulate successful build
                         echo "success" > /tmp/build_status
@@ -236,12 +239,12 @@ commands:
                 key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status" }}
                 when: always
                 paths:
-                - ~/.m2
+                - ~/.m2/repository
 description: |
     Simplify common tasks for building and testing Java projects using Maven on CircleCI.
     Based on the official CircleCI Maven orb version 1.0.2 , this orb takes advantange of the git history when
     restoring caches, improving build time when build files are modified. Skips going offline if <modules>
-    are detected within the root pom.xml.
+    are detected within the root pom.xml. Only caches the `.m2/respository` folder.
 display:
     home_url: https://maven.apache.org/
     source_url: https://github.com/entur/maven-orb
