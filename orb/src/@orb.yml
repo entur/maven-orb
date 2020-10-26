@@ -292,6 +292,9 @@ executors:
             The latest minor and patch update of the version 13 JDK image provided by CircleCI.
         docker:
             - image: cimg/openjdk:<<parameters.tag>>
+              auth:
+                username: $DOCKERHUB_LOGIN
+                password: $DOCKERHUB_PASSWORD
         parameters:
             tag:
                 default: "13.0"
@@ -303,6 +306,7 @@ jobs:
     parallel_test:
         description: |
             Checkout, build, test, and upload test results for a Maven project spreading tests across multiple nodes
+             NB! Add $DOCKERHUB_LOGIN and $DOCKERHUB_PASSWORD credentials in your context to log in to Docker hub
         executor: <<parameters.executor>>
         parallelism: <<parameters.parallelism>>
         parameters:
@@ -407,6 +411,7 @@ jobs:
     test:
         description: |
             Checkout, build, test, and upload test results for a Maven project.
+             NB! Add $DOCKERHUB_LOGIN and $DOCKERHUB_PASSWORD credentials in your context to log in to Docker hub
         executor: <<parameters.executor>>
         parameters:
             app_src_directory:
