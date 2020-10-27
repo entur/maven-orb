@@ -33,9 +33,10 @@ orbs:
 
 where `x` is the latest version from [the orb registry](https://circleci.com/orbs/registry/orb/entur/maven-orb).
 
-NB! Add $DOCKERHUB_LOGIN and $DOCKERHUB_PASSWORD credentials in your context to log in to Docker hub
-
 Note that the official orb goes offline before running the build. This does noes work well for multi-module builds, and so this orb detects whether the root `pom.xml` has any `<modules>` tag and if so skips going offline.
+
+### Default executor
+To use the default executor, [Docker Hub credentials](https://circleci.com/docs/2.0/private-images/) must be set as the environment variables `$DOCKERHUB_LOGIN` and `$DOCKERHUB_PASSWORD`.
 
 ## Caching strategy
 For a detailed caching strategy walkthrough, see our [Gradle orb](https://github.com/entur/gradle-orb).
