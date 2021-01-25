@@ -28,7 +28,7 @@ Import the orb
 
 ```yaml
 orbs:
-  owasp: entur/maven-orb@0.0.x
+  maven: entur/maven-orb@0.0.x
 ```
 
 where `x` is the latest version from [the orb registry](https://circleci.com/orbs/registry/orb/entur/maven-orb).
