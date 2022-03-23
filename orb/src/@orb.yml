@@ -145,18 +145,6 @@ commands:
                     fi
                 name: Install Dependencies
                 working_directory: << parameters.app_src_directory >>
-            - when:
-                condition: << parameters.verify_dependencies >>
-                steps:
-                  - run:
-                      command: |
-                        if ! grep -q "<modules>" pom.xml; then
-                          << parameters.maven_command >> dependency:go-offline "$@"
-                        else
-                          echo "Do not run offline command, assuming project with modules"
-                        fi
-                name: Install Maven dependencies (if not multi-module project)
-                working_directory: << parameters.app_src_directory >>
             - run:
                 command: |
                     # should the cache be cleaned?
@@ -169,6 +157,19 @@ commands:
                     echo "Activate java-agent for capturing which POMs are in use"
                     echo "export MAVEN_OPTS=\"\$MAVEN_OPTS -javaagent:$HOME/.m2/repository/agent.jar\"" >> $HOME/.mavenrc
                 name: Install maven agent if project needs cleanup
+                working_directory: << parameters.app_src_directory >>
+            - when:
+                condition: << parameters.verify_dependencies >>
+                steps:
+                  - run:
+                      name: Go offline (if not a multi-module project)
+                      command: |
+                        if ! grep -q "<modules>" pom.xml; then
+                          << parameters.maven_command >> dependency:go-offline "$@"
+                        else
+                          echo "Do not run offline command, assuming project with modules"
+                        fi
+                name: Install Maven dependencies (if not multi-module project)
                 working_directory: << parameters.app_src_directory >>
             - steps: << parameters.steps >>
             - run:
