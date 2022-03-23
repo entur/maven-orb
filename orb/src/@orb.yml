@@ -49,6 +49,10 @@ commands:
                 description: Verify dependencies are valid and available from public sources
                 type: boolean
                 default: true
+            cache_key_include_circleci_config:
+                description: Include the CircleCI build file .circleci/config.yml in the cache key. If true, this usually means clearing the cache on build updates.
+                type: boolean
+                default: false
             steps:
                 type: steps
         steps:
@@ -97,17 +101,48 @@ commands:
                     echo "failure" > /tmp/build_status_failure
                 name: Generate Maven cache checksum
                 working_directory: << parameters.app_src_directory >>
-            - restore_cache:
-                name: Restore Maven cache (searches history up to three previous commits)
-                keys:
-                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
-                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
-                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_first_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
-                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_first_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
-                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_second_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
-                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_second_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
-                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
-                    - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+                
+            - when:
+                condition: << parameters.verify_dependencies >>
+                steps:
+                  - run:
+                      command: |
+                        if ! grep -q "<modules>" pom.xml; then
+                          << parameters.maven_command >> dependency:go-offline "$@"
+                        else
+                          echo "Do not run offline command, assuming project with modules"
+                        fi
+                name: Install Maven dependencies (if not multi-module project)
+                working_directory: << parameters.app_src_directory >>
+            - when:
+                condition: << parameters.cache_key_include_circleci_config >>
+                steps:
+                  - restore_cache:
+                      name: Restore Maven cache (searches history up to three previous commits).
+                      keys:
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_first_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_first_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_second_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_second_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_success" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status_failure" }}
+            - unless:
+                condition: << parameters.cache_key_include_circleci_config >>
+                steps:
+                  - restore_cache:
+                      name: Restore Maven cache (searches history up to three previous commits)
+                      keys:
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum "/tmp/build_status_success" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum "/tmp/build_status_failure" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_first_hash" }}-{{ checksum "/tmp/build_status_success" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_first_hash" }}-{{ checksum "/tmp/build_status_failure" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_second_hash" }}-{{ checksum "/tmp/build_status_success" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_second_hash" }}-{{ checksum "/tmp/build_status_failure" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum "/tmp/build_status_success" }}
+                          - maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_previous_third_hash" }}-{{ checksum "/tmp/build_status_failure" }}
+
             - run:
                 name: Prepare Maven cache cleanup (if necessary)
                 command: |
@@ -254,12 +289,29 @@ commands:
                       # nuke resolution attempts, so that resolution is always reattempted on next build
                       find ~/.m2/repository/ -newer /tmp/build_status_failure -type f -name '*.lastUpdated' -delete
                     fi
-            - save_cache:
-                name: Save Maven cache (if does not exist already)
-                key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status" }}
+
+            - when:
                 when: always
-                paths:
-                - ~/.m2/repository
+                condition: << parameters.cache_key_include_circleci_config >>
+                steps:
+                  - save_cache:
+                      name: Restore Maven cache (searches history up to three previous commits).
+                      name: Save Maven cache (if does not exist already)
+                      key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status" }}
+                      when: always
+                      paths:
+                        - ~/.m2/repository
+            - when:
+                when: always
+                unless: << parameters.cache_key_include_circleci_config >>
+                steps:
+                  - save_cache:
+                      name: Restore Maven cache (searches history up to three previous commits).
+                      name: Save Maven cache (if does not exist already)
+                      key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum "/tmp/build_status" }}
+                      when: always
+                      paths:
+                        - ~/.m2/repository
 description: |
     Simplify common tasks for building and testing Java projects using Maven on CircleCI.
     Based on the official CircleCI Maven orb version 1.0.2 , this orb takes advantange of the git history when
