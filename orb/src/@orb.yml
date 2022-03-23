@@ -101,7 +101,7 @@ commands:
                     echo "failure" > /tmp/build_status_failure
                 name: Generate Maven cache checksum
                 working_directory: << parameters.app_src_directory >>
-                
+
             - when:
                 condition: << parameters.verify_dependencies >>
                 steps:
