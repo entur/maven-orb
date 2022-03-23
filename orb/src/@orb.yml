@@ -101,7 +101,7 @@ commands:
                     echo "failure" > /tmp/build_status_failure
                     if [ "true" == "<< parameters.cache_key_include_circleci_config >>" ]; then
                       cp .circleci/config.yml /tmp/circleci_config.yml
-                      echo "Include .circleci/config.yml in the cache key" 
+                      echo "Include .circleci/config.yml in the cache key"
                     else
                       echo "" > /tmp/circleci_config.yml
                     fi
