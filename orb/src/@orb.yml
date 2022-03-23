@@ -295,7 +295,6 @@ commands:
                 condition: << parameters.cache_key_include_circleci_config >>
                 steps:
                   - save_cache:
-                      name: Restore Maven cache (searches history up to three previous commits).
                       name: Save Maven cache (if does not exist already)
                       key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum ".circleci/config.yml" }}-{{ checksum "/tmp/build_status" }}
                       when: always
@@ -306,7 +305,6 @@ commands:
                 unless: << parameters.cache_key_include_circleci_config >>
                 steps:
                   - save_cache:
-                      name: Restore Maven cache (searches history up to three previous commits).
                       name: Save Maven cache (if does not exist already)
                       key: maven-<< parameters.cache_key >>-{{ checksum "/tmp/git_last_hash" }}-{{ checksum "/tmp/build_status" }}
                       when: always
