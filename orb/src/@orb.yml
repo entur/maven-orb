@@ -133,9 +133,9 @@ commands:
                     if cmp -s "/tmp/git_last_previous_first_hash" "/tmp/git_last_hash" ; then
                       echo "No new cache entry will be created"
                     fi
-                    if ! [[ -f ~/.m2/repository/agent.jar ]]; then
+                    if ! [[ -f ~/.m2/repository/agent-1.jar ]]; then
                       echo "Transfer agent from Maven central.."
-                      wget -q -O ~/.m2/repository/agent.jar https://repo1.maven.org/maven2/org/entur/maven/orb/agent/agent/1.0.0/agent-1.0.0.jar
+                      wget -q -O ~/.m2/repository/agent-1.jar https://oss.sonatype.org/content/repositories/snapshots/org/entur/maven/orb/agent/agent/1.0.1-SNAPSHOT/agent-1.0.1-20220824.130453-29.jar
                       echo "Transfer completed.."
                     fi
             - run:
@@ -155,7 +155,7 @@ commands:
                       fi
                     fi
                     echo "Activate java-agent for capturing which POMs are in use"
-                    echo "export MAVEN_OPTS=\"\$MAVEN_OPTS -javaagent:$HOME/.m2/repository/agent.jar\"" >> $HOME/.mavenrc
+                    echo "export MAVEN_OPTS=\"\$MAVEN_OPTS -javaagent:$HOME/.m2/repository/agent-1.jar\"" >> $HOME/.mavenrc
                 name: Install maven agent if project needs cleanup
                 working_directory: << parameters.app_src_directory >>
             - when:
