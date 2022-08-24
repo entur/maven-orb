@@ -199,14 +199,17 @@ commands:
                       for e; do endswith "$match" "$e" && return 0; done
                       return 1
                     }
-                    input="/tmp/poms.txt"
-                    # read all dependencies - https://www.artificialworlds.net/blog/2012/10/17/bash-associative-array-examples/
                     declare -A artifacts
-                    while IFS= read -r line
+                    while IFS= read -r -d '' filename
                     do
-                      SUBSTRING=${line##*/}
-                      artifacts[$SUBSTRING]=$line
-                    done < "$input"
+                      # read all dependencies - https://www.artificialworlds.net/blog/2012/10/17/bash-associative-array-examples/
+                        while IFS= read -r line
+                        do
+                        SUBSTRING=${line##*/}
+                        artifacts[$SUBSTRING]=$line
+                        done < "$filename"
+                    done < <(find ~/.m2 -type f -name "maven-pom-recorder-poms-*.txt")
+                    
                     # Read all the files in the .m2/repository directory
                     echo Start scanning files
                     pomFiles=()
