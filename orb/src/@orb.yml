@@ -209,7 +209,6 @@ commands:
                         artifacts[$SUBSTRING]=$line
                         done < "$filename"
                     done < <(find ~/.m2 -type f -name "maven-pom-recorder-poms-*.txt")
-                    
                     # Read all the files in the .m2/repository directory
                     echo Start scanning files
                     pomFiles=()
