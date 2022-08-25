@@ -201,9 +201,9 @@ commands:
                     }
                     echo "Iterating pom recorder files..."
                     declare -A artifacts
-                    while IFS= read -r -d '' filename
+                    while IFS= read -r filename
                     do
-                      echo $filename
+                      echo "$filename"
                       # read all dependencies - https://www.artificialworlds.net/blog/2012/10/17/bash-associative-array-examples/
                       while IFS= read -r line
                         do
