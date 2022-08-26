@@ -135,7 +135,7 @@ commands:
                     fi
                     if ! [[ -f ~/.m2/repository/agent.jar ]]; then
                       echo "Transfer agent from Maven central.."
-                      wget -q -O ~/.m2/repository/agent.jar https://oss.sonatype.org/content/repositories/snapshots/org/entur/maven/orb/agent/agent/1.0.1/agent-1.0.1.jar
+                      wget -q -O ~/.m2/repository/agent.jar https://repo1.maven.org/maven2/org/entur/maven/orb/agent/agent/1.0.1/agent-1.0.1.jar
                       echo "Transfer completed.."
                     fi
             - run:
